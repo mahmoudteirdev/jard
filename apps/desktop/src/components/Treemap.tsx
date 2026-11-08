@@ -97,8 +97,8 @@ export function Treemap(props: {
             type="button"
             className="cell"
             data-selected={item.node !== null && item.node.id === props.selectedId}
-            // RTL: the largest item starts at the right edge
-            style={{ right: r.x, top: r.y, width: w, height: h, background: item.color }}
+            // The largest item starts at the reading edge: right in Arabic, left in English
+            style={{ insetInlineStart: r.x, top: r.y, width: w, height: h, background: item.color }}
             title={text}
             aria-label={text}
             onClick={() => props.onActivate(item)}

@@ -1,0 +1,8 @@
+<resources>
+    <!-- Same colour as the first screen, so there is no flash at launch. -->
+    <style name="Theme.Jard" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#101412</item>
+        <item name="android:statusBarColor">#101412</item>
+        <item name="android:navigationBarColor">#171C19</item>
+    </style>
+</resources>

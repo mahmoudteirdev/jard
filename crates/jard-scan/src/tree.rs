@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -29,6 +30,8 @@ pub struct Tree {
     /// True if the scan was cancelled or any folder was not fully read.
     pub partial: bool,
     pub cancelled: bool,
+    /// Nodes taken out with [`Tree::detach`] (they left the disk after the scan).
+    detached: HashSet<NodeId>,
 }
 
 impl Tree {
@@ -36,9 +39,20 @@ impl Tree {
 
     /// Builds the tree and rolls sizes up from the leaves.
     pub(crate) fn build(root: PathBuf, nodes: Vec<Node>, elapsed: Duration, cancelled: bool) -> Self {
-        let mut tree = Tree { root, nodes, elapsed, partial: false, cancelled };
+        let mut tree = Tree { root, nodes, elapsed, partial: false, cancelled, detached: HashSet::new() };
         tree.rollup();
         tree
+    }
+
+    /// A tree read back from disk: its totals are already rolled up.
+    pub(crate) fn from_saved(
+        root: PathBuf,
+        nodes: Vec<Node>,
+        elapsed: Duration,
+        partial: bool,
+        cancelled: bool,
+    ) -> Self {
+        Tree { root, nodes, elapsed, partial, cancelled, detached: HashSet::new() }
     }
 
     /// Adds every folder's totals into its parent. Relies on child id > parent id, so a
@@ -112,6 +126,126 @@ impl Tree {
         self.path(id).map(|p| display_path(&p))
     }
 
+    /// The largest files at or above `min_size` bytes on disk, largest first.
+    pub fn largest_files(&self, min_size: u64, limit: usize) -> Vec<&Node> {
+        let mut found: Vec<&Node> = self.live_files().filter(|n| n.on_disk >= min_size).collect();
+        found.sort_by_key(|n| std::cmp::Reverse(n.on_disk));
+        found.truncate(limit);
+        found
+    }
+
+    /// Files at or above `min_size` not written to since `before` (seconds since 1970), largest first.
+    pub fn old_files(&self, before: u64, min_size: u64, limit: usize) -> Vec<&Node> {
+        let mut found: Vec<&Node> =
+            self.live_files().filter(|n| n.on_disk >= min_size && n.modified > 0 && n.modified < before).collect();
+        found.sort_by_key(|n| std::cmp::Reverse(n.on_disk));
+        found.truncate(limit);
+        found
+    }
+
+    /// Folders whose path ends with one of `tails` (segments compared ignoring ASCII case), largest
+    /// first. Each comes with the index of the tail it matched.
+    pub fn folders_ending_with(&self, tails: &[&[&str]]) -> Vec<(&Node, usize)> {
+        let mut found: Vec<(&Node, usize)> = Vec::new();
+        for n in self.nodes.iter().filter(|n| n.is_dir && n.on_disk > 0 && self.is_attached(n)) {
+            let hit = tails.iter().position(|tail| {
+                let mut cur = Some(n);
+                tail.iter().rev().all(|seg| match cur {
+                    Some(c) if c.name.eq_ignore_ascii_case(seg) => {
+                        cur = c.parent.and_then(|p| self.get(p));
+                        true
+                    }
+                    _ => false,
+                })
+            });
+            if let Some(i) = hit {
+                found.push((n, i));
+            }
+        }
+        found.sort_by_key(|f| std::cmp::Reverse(f.0.on_disk));
+        found
+    }
+
+    pub(crate) fn live_files(&self) -> impl Iterator<Item = &Node> {
+        self.nodes.iter().filter(|n| !n.is_dir && self.is_attached(n))
+    }
+
+    /// False once the node, or a folder above it, was taken out with [`Tree::detach`].
+    pub fn is_attached(&self, node: &Node) -> bool {
+        if self.detached.is_empty() {
+            return true;
+        }
+        let mut cur = node;
+        loop {
+            if self.detached.contains(&cur.id) {
+                return false;
+            }
+            match cur.parent {
+                Some(p) => cur = &self.nodes[p as usize],
+                None => return true,
+            }
+        }
+    }
+
+    /// Takes a node out after it left the disk: every total above it shrinks at once, without a
+    /// new scan. Returns false if there is nothing to do. [`Tree::reattach`] undoes it.
+    pub fn detach(&mut self, id: NodeId) -> bool {
+        if self.get(id).is_none_or(|n| n.parent.is_none()) || !self.detached.insert(id) {
+            return false;
+        }
+        self.shift(id, false);
+        true
+    }
+
+    /// Puts back a node removed with [`Tree::detach`], for example after a restore.
+    pub fn reattach(&mut self, id: NodeId) -> bool {
+        if !self.detached.remove(&id) {
+            return false;
+        }
+        self.shift(id, true);
+        true
+    }
+
+    fn shift(&mut self, id: NodeId, attach: bool) {
+        let n = &self.nodes[id as usize];
+        let (apparent, on_disk, files, dirs, cloud, dedup, denied, is_dir) = (
+            n.apparent,
+            n.on_disk,
+            n.files,
+            n.dirs + u64::from(n.is_dir),
+            n.cloud_bytes,
+            n.dedup_bytes,
+            n.denied,
+            n.is_dir,
+        );
+        let Some(parent) = n.parent else { return };
+        let apply = |v: &mut u64, d: u64| *v = if attach { *v + d } else { v.saturating_sub(d) };
+
+        let p = &mut self.nodes[parent as usize];
+        if attach {
+            p.children.push(id);
+        } else {
+            p.children.retain(|&c| c != id);
+        }
+        if !is_dir {
+            apply(&mut p.own_apparent, apparent);
+            apply(&mut p.own_on_disk, on_disk);
+            apply(&mut p.own_files, 1);
+        }
+        let mut cur = Some(parent);
+        while let Some(i) = cur {
+            let a = &mut self.nodes[i as usize];
+            apply(&mut a.apparent, apparent);
+            apply(&mut a.on_disk, on_disk);
+            apply(&mut a.files, files);
+            apply(&mut a.dirs, dirs);
+            apply(&mut a.cloud_bytes, cloud);
+            apply(&mut a.dedup_bytes, dedup);
+            apply(&mut a.denied, denied);
+            cur = a.parent;
+        }
+    }
+
     /// Writes the whole tree as JSON (`export_json`).
     pub fn write_json<W: Write>(&self, out: W) -> io::Result<()> {
         #[derive(Serialize)]
@@ -183,6 +317,48 @@ mod tests {
         assert!(t.nodes[1].has(flags::PARTIAL));
         assert!(!t.nodes[2].has(flags::PARTIAL));
         assert!(t.partial);
+    }
+
+    #[test]
+    fn detach_and_reattach_keep_totals_right() {
+        // 0 -> 1 -> 2 (file 1000), 0 -> 3 (file 10)
+        let mut root = Node::new(0, "r".into(), None, true);
+        let mut d1 = Node::new(1, "d".into(), Some(0), true);
+        let mut f2 = Node::new(2, "a".into(), Some(1), false);
+        let mut f3 = Node::new(3, "b".into(), Some(0), false);
+        for (n, size) in [(&mut f2, 1000), (&mut f3, 10)] {
+            n.own_apparent = size;
+            n.apparent = size;
+            n.own_on_disk = size;
+            n.on_disk = size;
+            n.own_files = 1;
+            n.files = 1;
+        }
+        d1.children = vec![2];
+        (d1.apparent, d1.on_disk, d1.own_apparent, d1.own_on_disk, d1.own_files, d1.files) =
+            (1000, 1000, 1000, 1000, 1, 1);
+        root.children = vec![1, 3];
+        (root.apparent, root.on_disk, root.own_apparent, root.own_on_disk, root.own_files, root.files) =
+            (10, 10, 10, 10, 1, 1);
+        let mut t = Tree::build(PathBuf::from("r"), vec![root, d1, f2, f3], Duration::ZERO, false);
+        let total = t.nodes[0].apparent;
+        assert_eq!((total, t.nodes[0].files, t.nodes[0].dirs), (1010, 2, 1));
+
+        assert!(t.detach(1));
+        assert!(!t.detach(1), "already out");
+        assert_eq!((t.nodes[0].apparent, t.nodes[0].files, t.nodes[0].dirs), (10, 1, 0));
+        assert_eq!(t.nodes[0].children, vec![3]);
+        assert!(!t.is_attached(&t.nodes[2]), "a file under a detached folder is gone too");
+        assert_eq!(t.largest_files(0, 10).len(), 1);
+
+        assert!(t.detach(3));
+        assert_eq!((t.nodes[0].own_apparent, t.nodes[0].own_files), (0, 0));
+        assert!(t.reattach(3));
+        assert!(t.reattach(1));
+        assert!(!t.reattach(1), "already back");
+        assert_eq!((t.nodes[0].apparent, t.nodes[0].files, t.nodes[0].dirs), (1010, 2, 1));
+        assert_eq!(t.largest_files(0, 10).len(), 2);
+        assert!(!t.detach(0), "the root cannot be detached");
     }
 
     #[test]

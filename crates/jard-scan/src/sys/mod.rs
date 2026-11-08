@@ -22,6 +22,8 @@ pub struct Entry {
     pub traverse: bool,
     pub apparent: u64,
     pub on_disk: u64,
+    /// Last write time, seconds since 1970. 0 when unknown.
+    pub modified: u64,
     pub flags: u8,
     /// (volume, file index) when the file has more than one hard link and ids were asked for.
     pub file_id: Option<(u64, u64)>,
@@ -37,4 +39,19 @@ pub enum ListError {
 pub struct Listing {
     pub entries: Vec<Entry>,
     pub error: Option<ListError>,
+}
+
+/// Identity of the file behind `path` when it has more than one hard link: same value, same data.
+#[cfg(windows)]
+pub fn link_identity(path: &std::path::Path) -> Option<(u64, u64)> {
+    use std::os::windows::ffi::OsStrExt;
+    let wide: Vec<u16> = path.as_os_str().encode_wide().chain([0]).collect();
+    win::hardlink_id(&wide)
+}
+
+#[cfg(unix)]
+pub fn link_identity(path: &std::path::Path) -> Option<(u64, u64)> {
+    use std::os::unix::fs::MetadataExt;
+    let md = std::fs::symlink_metadata(path).ok()?;
+    (md.nlink() > 1).then(|| (md.dev(), md.ino()))
 }

@@ -5,7 +5,7 @@ export type RouteId =
   | "cleanup" | "programs" | "history"
   | "health" | "tests" | "reports"
   | "security" | "settings"
-  | "scan";
+  | "scan" | "guard" | "about" | "license" | "whyslow";
 
 export interface RailItem {
   id: RouteId;
@@ -46,8 +46,8 @@ export const RAIL_GROUPS: { name: string; items: RailItem[] }[] = [
 
 export const RAIL_ITEMS: RailItem[] = [RAIL_START, ...RAIL_GROUPS.flatMap((g) => g.items), RAIL_END];
 
-const ALL = new Set<string>([...RAIL_ITEMS.map((i) => i.id), "scan"]);
-const DEFAULT: RouteId = "storage";
+const ALL = new Set<string>([...RAIL_ITEMS.map((i) => i.id), "scan", "guard", "about", "license", "whyslow"]);
+const DEFAULT: RouteId = "overview";
 
 function parse(): RouteId {
   const id = location.hash.replace(/^#\/?/, "");

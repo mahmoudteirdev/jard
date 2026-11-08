@@ -1,7 +1,7 @@
 // The one scan the app shows at a time: its progress while running, its tree once done.
 
 import { useSyncExternalStore } from "react";
-import { engine, type Done, type Drive, type Progress, type ScanId, type Unlisten } from "./engine";
+import { engine, type Done, type Drive, type Progress, type SavedScan, type ScanId, type Unlisten } from "./engine";
 
 export interface Session {
   id: ScanId;
@@ -37,12 +37,24 @@ function finish(id: ScanId, d: Done) {
   unlisten = [];
 }
 
-export async function startScan(root: string, drive: Drive | null, dedupHardlinks: boolean): Promise<void> {
+/** Shows a saved result without scanning again. `finishedAt` is when it was really scanned. */
+export async function openSaved(saved: SavedScan, drive: Drive | null): Promise<void> {
+  const id = await engine.openSaved(saved.key);
+  const previous = session;
+  set({
+    id, root: saved.root, drive, dedup: false, phase: "done", progress: null,
+    done: { rootId: 0, elapsedMs: 0, partial: saved.partial, error: null },
+    startedAt: saved.savedAt * 1000, finishedAt: saved.savedAt * 1000,
+  });
+  if (previous) void engine.forgetScan(previous.id).catch(() => {});
+}
+
+export async function startScan(root: string, drive: Drive | null, dedupHardlinks: boolean, keep = true): Promise<void> {
   const previous = session;
   unlisten.forEach((u) => u());
   unlisten = [];
 
-  const id = await engine.startScan(root, { dedupHardlinks });
+  const id = await engine.startScan(root, { dedupHardlinks }, keep);
   set({ id, root, drive, dedup: dedupHardlinks, phase: "running", progress: null, done: null, startedAt: Date.now(), finishedAt: null });
   // Freed only now: the old results stay on screen, and readable, until the new session replaces them.
   if (previous) void engine.forgetScan(previous.id).catch(() => {});

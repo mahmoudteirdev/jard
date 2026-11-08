@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import type { Unit } from "./format";
+import type { Language } from "./i18n";
 
 export type Theme = "dark" | "light" | "system";
 
@@ -10,10 +11,18 @@ export interface Settings {
   unit: Unit;
   /** Count each hard-linked file once. About twice as slow on Windows. */
   dedupHardlinks: boolean;
+  /** Save results on this machine for next time and for comparing. */
+  keepResults: boolean;
+  /** Look for a newer version at each start. Null: not asked yet. */
+  checkUpdates: boolean | null;
+  /** Fingerprint lookups on VirusTotal: off until turned on, and needs the person's own key. */
+  virustotal: boolean;
+  virustotalKey: string;
+  language: Language;
 }
 
 const KEY = "jard.settings";
-const DEFAULTS: Settings = { theme: "dark", unit: "GB", dedupHardlinks: false };
+const DEFAULTS: Settings = { theme: "dark", unit: "GB", dedupHardlinks: false, keepResults: true, checkUpdates: null, virustotal: false, virustotalKey: "", language: "ar" };
 
 function load(): Settings {
   try {

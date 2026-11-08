@@ -181,6 +181,7 @@ fn entry(fd: &WIN32_FIND_DATAW, base: &[u16], full: &mut Vec<u16>, vol: &Volume,
         traverse: false,
         apparent: 0,
         on_disk: 0,
+        modified: 0,
         flags: f,
         file_id: None,
     };
@@ -191,6 +192,9 @@ fn entry(fd: &WIN32_FIND_DATAW, base: &[u16], full: &mut Vec<u16>, vol: &Volume,
     }
 
     e.apparent = (u64::from(fd.nFileSizeHigh) << 32) | u64::from(fd.nFileSizeLow);
+    // FILETIME counts 100 ns ticks since 1601.
+    let ticks = (u64::from(fd.ftLastWriteTime.dwHighDateTime) << 32) | u64::from(fd.ftLastWriteTime.dwLowDateTime);
+    e.modified = (ticks / 10_000_000).saturating_sub(11_644_473_600);
     full.clear();
     full.extend_from_slice(base);
     full.extend_from_slice(name);
@@ -231,7 +235,7 @@ fn compressed_size(path_nul: &[u16]) -> Option<u64> {
 
 /// Opens the file (attributes only) to read its link count and file index. Costly, so only
 /// done when hard-link dedup is on.
-fn hardlink_id(path_nul: &[u16]) -> Option<(u64, u64)> {
+pub(super) fn hardlink_id(path_nul: &[u16]) -> Option<(u64, u64)> {
     // SAFETY: `path_nul` is NUL-terminated; the handle is closed before returning.
     unsafe {
         let h = CreateFileW(

@@ -181,6 +181,7 @@ impl Walker<'_> {
                 } else {
                     let cloud_bytes =
                         if e.flags & flags::CLOUD != 0 { e.apparent.saturating_sub(e.on_disk) } else { 0 };
+                    node.modified = e.modified;
                     node.own_apparent = e.apparent;
                     node.apparent = e.apparent;
                     node.own_on_disk = e.on_disk;

@@ -3,7 +3,7 @@ package app.jard.design
 // مولّد من tokens.json — لا تعدّل القيم هنا. الاسم هو ما يُستخدم في الكود لا القيمة.
 // بلا Material: التصميم حواف حادة بلا ظلال ولا زوايا دائرية، فنستخدم أنظمة ألوان خاصة.
 
-import androidx.compose.foundation.shape.RectangleShape
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf

@@ -348,3 +348,121 @@ fn denied_folder_is_flagged_and_scan_continues() {
     assert_eq!(tree.root_node().apparent, 500, "the rest of the scan still counts");
     assert!(!tree.partial, "a denied folder is not an error");
 }
+
+#[test]
+fn duplicates_are_found_by_content_not_name_or_size() {
+    use std::sync::atomic::AtomicBool;
+    let t = TempDir::new();
+    let body = vec![9u8; 200_000];
+    let mut other = body.clone();
+    *other.last_mut().unwrap() = 1; // same size and same first 64 KiB, different content
+    fs::write(t.file("a/one.bin", 0), &body).unwrap();
+    fs::write(t.file("much/deeper/copy.bin", 0), &body).unwrap();
+    fs::write(t.file("near-miss.bin", 0), &other).unwrap();
+    t.file("small-1.txt", 10);
+    t.file("small-2.txt", 10);
+    let link_target = t.file("linked/orig.bin", 150_000);
+    fs::hard_link(&link_target, t.0.join("linked/also.bin")).unwrap();
+
+    let tree = run(&t.0, Options::default());
+    let groups = jard_scan::find_duplicates(&tree, 1000, &AtomicBool::new(false));
+    assert_eq!(groups.len(), 1, "{groups:?}");
+    assert_eq!(groups[0].size, 200_000);
+    assert_eq!(groups[0].reclaimable(), 200_000);
+    let names: Vec<&str> = groups[0].files.iter().map(|&i| &*tree.nodes[i as usize].name).collect();
+    assert_eq!(names, ["one.bin", "copy.bin"], "the shortest path comes first");
+
+    assert!(jard_scan::find_duplicates(&tree, 1000, &AtomicBool::new(true)).is_empty(), "stop ends it");
+}
+
+#[test]
+fn large_and_old_files_are_listed() {
+    let t = sample();
+    let tree = run(&t.0, Options::default());
+    let large: Vec<&str> = tree.largest_files(5000, 10).iter().map(|n| &*n.name).collect();
+    assert_eq!(large, ["c.bin", "b.bin"]);
+    let f = find(&tree, "c.bin");
+    assert!(f.modified > 1_600_000_000, "modified {}", f.modified);
+    assert!(tree.old_files(f.modified + 86_400, 5000, 10).len() == 2);
+    assert!(tree.old_files(f.modified - 86_400, 0, 10).is_empty());
+
+    let tails: &[&[&str]] = &[&["nope", "deep"], &["SUB", "deep"]];
+    let hits = tree.folders_ending_with(tails);
+    assert_eq!(hits.len(), 1);
+    assert_eq!((&*hits[0].0.name, hits[0].1), ("deep", 1));
+}
+
+#[test]
+fn saved_tree_reads_back_the_same_and_leaves_out_what_left_the_disk() {
+    let t = sample();
+    let tree = run(&t.0, Options::default());
+    let mut buf = Vec::new();
+    tree.save(&mut buf).unwrap();
+    let back = Tree::load(&buf[..]).unwrap();
+    assert_eq!(back.nodes, tree.nodes);
+    assert_eq!(back.root, tree.root);
+    assert_eq!(back.partial, tree.partial);
+
+    // A saved tree works like a fresh one.
+    assert_eq!(names(&back.children(Tree::ROOT, SortKey::Name, 0, None)), ["a.bin", "b.bin", "empty", "sub"]);
+    assert!(back.path(find(&back, "d.bin").id).unwrap().exists());
+
+    let mut moved = tree.clone();
+    let sub = find(&moved, "sub").id;
+    assert!(moved.detach(sub));
+    let mut buf = Vec::new();
+    moved.save(&mut buf).unwrap();
+    let back = Tree::load(&buf[..]).unwrap();
+    assert_eq!(back.root_node().apparent, 6000);
+    assert_eq!(back.root_node().files, 2);
+    assert!(back.nodes.iter().all(|n| &*n.name != "sub" && &*n.name != "c.bin" && &*n.name != "deep"));
+    for (i, n) in back.nodes.iter().enumerate() {
+        assert_eq!(n.id as usize, i);
+        assert!(n.parent.is_none_or(|p| p < n.id));
+    }
+}
+
+#[test]
+fn damaged_scan_files_are_errors_not_panics() {
+    let t = sample();
+    let tree = run(&t.0, Options::default());
+    let mut good = Vec::new();
+    tree.save(&mut good).unwrap();
+
+    assert!(Tree::load(&b""[..]).is_err());
+    assert!(Tree::load(&b"not a scan file at all"[..]).is_err());
+    for cut in [1, 10, 11, good.len() / 2, good.len() - 1] {
+        assert!(Tree::load(&good[..cut]).is_err(), "cut at {cut}");
+    }
+    // Every single-byte change must load or fail cleanly, never panic.
+    for i in 10..good.len() {
+        let mut bad = good.clone();
+        bad[i] ^= 0xFF;
+        let _ = Tree::load(&bad[..]);
+    }
+}
+
+#[test]
+fn search_finds_by_name_kind_size_and_emptiness() {
+    use jard_scan::{kind_totals, Kind, Query};
+    let t = TempDir::new();
+    t.file("video/holiday.MP4", 9000);
+    t.file("video/notes.txt", 100);
+    t.file("Makefile", 50);
+    t.file("ملفات/تقرير.pdf", 5000);
+    t.dir("empty-one");
+    let tree = run(&t.0, Options::default());
+    let hit = |q: Query| -> Vec<String> { tree.search(&q, 50).iter().map(|n| n.name.to_string()).collect() };
+
+    assert_eq!(hit(Query { text: "HOLI".into(), ..Query::default() }), ["holiday.MP4"]);
+    assert_eq!(hit(Query { text: "تقرير".into(), ..Query::default() }), ["تقرير.pdf"]);
+    assert_eq!(hit(Query { kind: Some(Kind::Video), ..Query::default() }), ["holiday.MP4"]);
+    assert_eq!(hit(Query { no_extension: true, ..Query::default() }), ["Makefile"]);
+    assert_eq!(hit(Query { empty_folders: true, ..Query::default() }), ["empty-one"]);
+    assert_eq!(hit(Query { text: "o".into(), min_size: 8000, ..Query::default() }), ["video", "holiday.MP4"]);
+
+    let totals = kind_totals(&tree);
+    assert_eq!(totals[0].kind, Kind::Video);
+    assert_eq!(totals.iter().map(|k| k.files).sum::<u64>(), 4);
+    assert_eq!(totals.iter().map(|k| k.on_disk).sum::<u64>(), tree.root_node().on_disk);
+}

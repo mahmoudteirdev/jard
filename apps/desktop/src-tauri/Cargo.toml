@@ -15,8 +15,15 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 jard-scan = { path = "../../../crates/jard-scan" }
+jard-clean = { path = "../../../crates/jard-clean" }
+jard-license = { path = "../../../crates/jard-license" }
+tauri-plugin-updater = "2"
+tauri-plugin-single-instance = "2"
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+blake3 = "1"
+sha2 = "0.10"
+ureq = { version = "2", features = ["json"] }

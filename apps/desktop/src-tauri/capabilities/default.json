@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Main window: core APIs, folder picker and save dialog.",
   "windows": ["main"],
-  "permissions": ["core:default", "dialog:allow-open", "dialog:allow-save"]
+  "permissions": ["core:default", "dialog:allow-open", "dialog:allow-save", "updater:default"]
 }

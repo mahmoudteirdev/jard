@@ -20,7 +20,10 @@
 //! ```
 
 pub mod drives;
+mod duplicates;
+mod kinds;
 mod node;
+mod persist;
 mod progress;
 mod sys;
 mod tree;
@@ -31,8 +34,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
+pub use duplicates::{find_duplicates, DuplicateGroup};
+pub use kinds::{kind_totals, Kind, KindTotal, Query};
 pub use node::{flags, Node, NodeId};
 pub use progress::{Progress, Snapshot};
+pub use sys::link_identity;
 pub use tree::{display_path, SortKey, Tree};
 pub use walk::{scan, Options};
 

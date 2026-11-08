@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
+import { askToClean, useTreeVersion } from "../clean-session";
+import { reasonText } from "../clean-text";
 import { FolderList, KIND_COLOR } from "../components/FolderList";
 import { Badges } from "../components/Badges";
 import { Treemap, type MapItem } from "../components/Treemap";
 import { engine, Flag, type Drive, type NodeDto, type SortKey } from "../engine";
 import { ago, middle, num, size, type Unit } from "../format";
+import { groupTotals } from "../file-kinds";
 import { go, href } from "../routes";
 import { startScan, type Session } from "../scan-session";
 import { updateSettings, useSettings } from "../settings";
+
+/** The folder open in each scan, so visiting another screen doesn't lose your place. */
+const lastFolder = new Map<number, number>();
 
 const MAP_ITEMS = 40; // largest children drawn on the map; the rest become one "others" cell
 
@@ -16,20 +22,20 @@ const SORTS: { key: SortKey; name: string }[] = [
   { key: "name", name: "الاسم" },
 ];
 
-export async function scanAndShow(root: string, drive: Drive | null, dedup: boolean) {
+export async function scanAndShow(root: string, drive: Drive | null, dedup: boolean, keep = true) {
   // Scan screen only after the session exists: it leaves at once when there is no running scan.
-  await startScan(root, drive, dedup);
+  await startScan(root, drive, dedup, keep);
   go("scan");
 }
 
 /** First run: no scan yet. One amber action: scan the system drive. */
 function FirstRun({ drives, failed }: { drives: Drive[]; failed?: Session }) {
-  const { dedupHardlinks } = useSettings();
+  const { dedupHardlinks, keepResults } = useSettings();
   const ready = drives.filter((d) => d.ready);
   const main = ready.find((d) => d.kind === "fixed") ?? ready[0];
   const rest = ready.filter((d) => d !== main);
   const [error, setError] = useState<string | null>(null);
-  const run = (root: string, d: Drive | null) => scanAndShow(root, d, dedupHardlinks).catch((e) => setError(String(e)));
+  const run = (root: string, d: Drive | null) => scanAndShow(root, d, dedupHardlinks, keepResults).catch((e) => setError(String(e)));
   const pick = async () => {
     const folder = await engine.pickFolder().catch((e) => (setError(String(e)), null));
     if (folder) await run(folder, null);
@@ -101,7 +107,7 @@ function DriveCard({ d, onScan }: { d: Drive; onScan: () => void }) {
 
 /** Drive list under the Rail on the Storage screen. */
 export function DriveList({ drives, session }: { drives: Drive[]; session: Session | null }) {
-  const { unit, dedupHardlinks } = useSettings();
+  const { unit, dedupHardlinks, keepResults } = useSettings();
   const ready = drives.filter((d) => d.ready);
   if (!ready.length) return null;
   return (
@@ -117,7 +123,7 @@ export function DriveList({ drives, session }: { drives: Drive[]; session: Sessi
             className="drive"
             aria-current={current ? "true" : undefined}
             aria-label={`${current ? "" : "افحص "}${driveName(d)}، مستخدم ${size(used, unit)} من ${size(d.total, unit)}`}
-            onClick={() => (current ? go("storage") : void scanAndShow(d.root, d, dedupHardlinks))}
+            onClick={() => (current ? go("storage") : void scanAndShow(d.root, d, dedupHardlinks, keepResults))}
           >
             <span className="top">
               <DriveName d={d} />
@@ -130,6 +136,32 @@ export function DriveList({ drives, session }: { drives: Drive[]; session: Sessi
         );
       })}
     </div>
+  );
+}
+
+/** How the scan splits by kind of file. Every colour has its name and size beside it. */
+function KindBar({ scanId, version, unit }: { scanId: number; version: number; unit: Unit }) {
+  const [groups, setGroups] = useState<ReturnType<typeof groupTotals>>([]);
+  useEffect(() => {
+    let live = true;
+    engine.kindsOf(scanId).then((k) => live && setGroups(groupTotals(k)), () => {});
+    return () => {
+      live = false;
+    };
+  }, [scanId, version]);
+  const total = groups.reduce((s, g) => s + g.onDisk, 0);
+  if (total === 0) return null;
+  return (
+    <section className="usage" aria-label="توزيع المساحة حسب النوع">
+      <div className="bar" role="img" aria-label={groups.map((g) => `${g.name} ${size(g.onDisk, unit)}`).join("، ")}>
+        {groups.map((g) => <div key={g.id} title={`${g.name}: ${size(g.onDisk, unit)}`} style={{ flex: `${g.onDisk} 1 0px`, background: g.color }} />)}
+      </div>
+      <div className="legend">
+        {groups.map((g) => (
+          <span key={g.id}><span className="swatch" style={{ background: g.color }} />{g.name} <span className="num muted">{size(g.onDisk, unit)}</span></span>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -186,9 +218,10 @@ function DriveUsage({ root, drive, unit, dedup }: { root: NodeDto; drive: Drive;
 }
 
 function Results({ session }: { session: Session }) {
-  const { unit, dedupHardlinks } = useSettings();
+  const { unit, dedupHardlinks, keepResults } = useSettings();
   const scanId = session.id;
-  const [folderId, setFolderId] = useState(session.done?.rootId ?? 0);
+  const [folderId, setFolderId] = useState(lastFolder.get(session.id) ?? session.done?.rootId ?? 0);
+  const version = useTreeVersion();
   const [chain, setChain] = useState<NodeDto[]>([]);
   const [mapKids, setMapKids] = useState<NodeDto[]>([]);
   const [sort, setSort] = useState<SortKey>("on_disk");
@@ -208,7 +241,13 @@ function Results({ session }: { session: Session }) {
     return () => {
       live = false;
     };
-  }, [scanId, folderId, sort]);
+  }, [scanId, folderId, sort, version]);
+
+  // Sizes changed, or the selected things are gone: selections would point at nothing.
+  useEffect(() => {
+    setSelected(null);
+    setChecked(new Map());
+  }, [version]);
 
   const shown = selected ?? folder ?? null;
   useEffect(() => {
@@ -221,6 +260,7 @@ function Results({ session }: { session: Session }) {
   }, [scanId, shown]);
 
   const open = (n: NodeDto) => {
+    lastFolder.set(scanId, n.id);
     setFolderId(n.id);
     setSelected(null);
     setChecked(new Map());
@@ -262,7 +302,7 @@ function Results({ session }: { session: Session }) {
     }
   };
   const reveal = (n: NodeDto) => engine.reveal(scanId, n.id).catch((e) => setNotice({ kind: "error", text: String(e) }));
-  const rescan = () => void scanAndShow(session.root, session.drive, dedupHardlinks);
+  const rescan = () => void scanAndShow(session.root, session.drive, dedupHardlinks, keepResults);
 
   return (
     <>
@@ -312,6 +352,7 @@ function Results({ session }: { session: Session }) {
       )}
 
       {session.drive && folder.id === root.id && <DriveUsage root={root} drive={session.drive} unit={unit} dedup={session.dedup} />}
+      {folder.id === root.id && <KindBar scanId={scanId} version={version} unit={unit} />}
 
       <div className="panes">
         <section className="list card" aria-labelledby="list-title">
@@ -330,6 +371,7 @@ function Results({ session }: { session: Session }) {
             unit={unit}
             selectedId={selected?.id ?? null}
             checked={checked}
+            version={version}
             onOpen={open}
             onSelect={setSelected}
             onToggle={toggle}
@@ -363,8 +405,7 @@ function Results({ session }: { session: Session }) {
             تم تحديد <span className="num">{num(picked.length)}</span> · <span className="num">{size(pickedSize, unit)}</span> على القرص
           </strong>
           <button type="button" className="btn" onClick={() => setChecked(new Map())}>إلغاء التحديد</button>
-          <button type="button" className="btn" disabled aria-describedby="why-no-quarantine">نقل إلى الحجر</button>
-          <span id="why-no-quarantine" className="why">النقل إلى الحجر المؤقت (30 يوماً مع تراجع) يأتي في خطوة التنظيف، ولم يُبنَ بعد.</span>
+          <button type="button" className="btn" onClick={() => askToClean({ scanId, nodes: picked, from: "storage" })}>نقل إلى الحجر</button>
         </section>
       )}
 
@@ -381,6 +422,7 @@ function Results({ session }: { session: Session }) {
             {shown.denied > 0 && <span>تعذّرت قراءة <span className="num">{num(shown.denied)}</span></span>}
           </span>
           <Badges flags={shown.flags} skip={shown.isDir ? 0 : Flag.PARTIAL} />
+          {shown.protected && <span className="badge" title={reasonText(shown.protected)}>مسار محمي<span className="sr-only">: {reasonText(shown.protected)}</span></span>}
           <button type="button" className="btn" onClick={() => reveal(shown)}>إظهار في المستكشف</button>
         </section>
       )}

@@ -1,5 +1,7 @@
 // Numbers are always Western digits (0-9), shown LTR in a mono face (.num in tokens.css).
 
+import { locale } from "./i18n";
+
 export type Unit = "GB" | "GiB";
 
 const intl = new Intl.NumberFormat("en-US");
@@ -14,6 +16,9 @@ export const num = (n: number) => intl.format(n);
 const SI = ["B", "KB", "MB", "GB", "TB", "PB"];
 const IEC = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
 
+/** Keeps a size or a path in order inside an Arabic sentence: "3.15 MB", not "MB 3.15". */
+export const ltr = (text: string) => `\u2066${text}\u2069`;
+
 /** 1234567 -> "1.23 MB" (or "1.18 MiB"). Three significant digits, unit always attached. */
 export function size(bytes: number, unit: Unit): string {
   const base = unit === "GB" ? 1000 : 1024;
@@ -24,9 +29,9 @@ export function size(bytes: number, unit: Unit): string {
     v /= base;
     i++;
   }
-  if (i === 0) return `${intl.format(bytes)} B`;
+  if (i === 0) return ltr(`${intl.format(bytes)} B`);
   const fmt = v >= 100 ? f0 : v >= 10 ? f1 : f2;
-  return `${fmt.format(v)} ${names[i]}`;
+  return ltr(`${fmt.format(v)} ${names[i]}`);
 }
 
 /** 83_000 -> "01:23" */
@@ -38,7 +43,7 @@ export function clock(ms: number): string {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-const rel = new Intl.RelativeTimeFormat("ar-u-nu-latn", { numeric: "auto" });
+const rel = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
 
 /** "قبل 3 دقائق", Western digits. */
 export function ago(ts: number, now = Date.now()): string {

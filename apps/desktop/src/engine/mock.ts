@@ -2,7 +2,10 @@
 // Builds a made-up tree with the same shape and rules as jard-scan (child id > parent id,
 // rolled-up totals, flags), and "scans" it over a few seconds.
 
-import { Flag, type Done, type Drive, type Engine, type NodeDto, type Progress, type SortKey } from "./types";
+import {
+  Flag, type Done, type Drive, type Engine, type LogEntry, type NodeDto, type Progress,
+  type QuarantineItem, type SortKey,
+} from "./types";
 
 interface FakeNode {
   id: number;
@@ -143,10 +146,41 @@ function buildTree(): FakeNode[] {
   return nodes;
 }
 
+const PROTECTED = new Set(["Windows", "System Volume Information", "$Recycle.Bin", "pagefile.sys", "hiberfil.sys"]);
+
 const dto = (n: FakeNode): NodeDto => {
   const { children, ...rest } = n;
-  return { ...rest, childCount: children.length };
+  const reason = PROTECTED.has(n.name) ? "system" : n.parent === null ? "container" : null;
+  return { ...rest, childCount: children.length, modified: 1_600_000_000, protected: reason };
 };
+
+/** Same arithmetic as Tree::detach and Tree::reattach. */
+function shift(nodes: FakeNode[], n: FakeNode, attach: boolean) {
+  const sign = attach ? 1 : -1;
+  let p = n.parent === null ? undefined : nodes[n.parent];
+  if (!p) return;
+  if (attach) p.children.push(n.id);
+  else p.children = p.children.filter((c) => c !== n.id);
+  if (!n.isDir) {
+    p.ownApparent += sign * n.apparent;
+    p.ownOnDisk += sign * n.onDisk;
+    p.ownFiles += sign;
+  }
+  while (p) {
+    p.apparent += sign * n.apparent;
+    p.onDisk += sign * n.onDisk;
+    p.files += sign * n.files;
+    p.dirs += sign * (n.dirs + (n.isDir ? 1 : 0));
+    p.cloudBytes += sign * n.cloudBytes;
+    p.dedupBytes += sign * n.dedupBytes;
+    p = p.parent === null ? undefined : nodes[p.parent];
+  }
+}
+
+const fakeQuarantine = new Map<string, { item: QuarantineItem; nodes: FakeNode[]; node: FakeNode }>();
+const fakeLog: LogEntry[] = [];
+let nextItem = 0;
+const seconds = () => Math.floor(Date.now() / 1000);
 
 const DRIVES: Drive[] = [
   { root: "C:\\", label: "النظام", fs: "NTFS", kind: "fixed", total: 476 * GB, free: 85 * GB, ready: true },
@@ -287,6 +321,186 @@ export const mockEngine: Engine = {
   },
   async reveal() {
     throw new Error("فتح المستكشف يعمل في التطبيق فقط، لا في وضع العرض");
+  },
+  async previewClean(scanId, nodeIds) {
+    const { nodes } = done(scanId);
+    const list = nodeIds.map((i) => nodes[i]!);
+    const ok = list.filter((n) => !dto(n).protected);
+    return {
+      movable: ok.map((n) => n.name),
+      refused: list.filter((n) => dto(n).protected).map((n) => ({ path: n.name, reason: dto(n).protected! })),
+      apparent: ok.reduce((s, n) => s + n.apparent, 0),
+      onDisk: ok.reduce((s, n) => s + n.onDisk, 0),
+      files: ok.reduce((s, n) => s + n.files, 0),
+      effects: ok.some((n) => n.flags & Flag.CLOUD) ? [{ kind: "synced", paths: ok.filter((n) => n.flags & Flag.CLOUD).map((n) => n.name) }] : [],
+    };
+  },
+  async quarantineNodes(scanId, nodeIds) {
+    const { nodes } = done(scanId);
+    return nodeIds.map((nodeId) => {
+      const n = nodes[nodeId]!;
+      const reason = dto(n).protected;
+      if (reason) return { nodeId, path: n.name, item: null, failure: { kind: "protected" as const, reason } };
+      if (n.name === "Desktop") return { nodeId, path: n.name, item: null, failure: { kind: "in_use" as const } };
+      const at = seconds();
+      const item: QuarantineItem = {
+        id: String(++nextItem), original: n.name, isDir: n.isDir, apparent: n.apparent, onDisk: n.onDisk,
+        files: n.files, movedAt: at, expiresAt: at + 30 * 86400,
+      };
+      shift(nodes, n, false);
+      fakeQuarantine.set(item.id, { item, nodes, node: n });
+      fakeLog.unshift({ at, kind: "quarantined", count: 1, bytes: n.onDisk });
+      return { nodeId, path: n.name, item, failure: null };
+    });
+  },
+  async listQuarantine() {
+    return [...fakeQuarantine.values()].map((q) => q.item);
+  },
+  async restoreItem(id) {
+    const q = fakeQuarantine.get(id);
+    if (!q) return { path: null, failure: { kind: "missing" } };
+    shift(q.nodes, q.node, true);
+    fakeQuarantine.delete(id);
+    fakeLog.unshift({ at: seconds(), kind: "restored", count: 1, bytes: q.item.onDisk });
+    return { path: q.item.original, failure: null };
+  },
+  async deleteItem(id) {
+    const q = fakeQuarantine.get(id);
+    if (!q) return { kind: "missing" };
+    fakeQuarantine.delete(id);
+    fakeLog.unshift({ at: seconds(), kind: "deleted", count: 1, bytes: q.item.onDisk });
+    return null;
+  },
+  async readLog(limit = 50) {
+    return fakeLog.slice(0, limit);
+  },
+  async cleanupCandidates(scanId, kind) {
+    const { nodes } = done(scanId);
+    const list = kind === "temp"
+      ? nodes.filter((n) => n.name === "AppData" || n.name === "part-1")
+      : nodes.filter((n) => !n.isDir && n.onDisk > (kind === "large" ? 1e9 : 5e8) && !dto(n).protected);
+    return list.slice(0, 40).map((n) => ({ node: dto(n), path: n.name, note: kind === "temp" ? "safe" : "kind_other" }));
+  },
+  async findDuplicates() {
+    return [];
+  },
+  async savedScans() {
+    return [];
+  },
+  async openSaved() {
+    throw new Error("النتائج المحفوظة تعمل في التطبيق فقط");
+  },
+  async forgetSaved() {},
+  async scanPoints() {
+    return [];
+  },
+  async compareScans() {
+    return [];
+  },
+  async kindsOf(scanId) {
+    const r = done(scanId).nodes[0]!;
+    return [{ kind: "video", onDisk: r.onDisk * 0.4, files: 100 }, { kind: "program", onDisk: r.onDisk * 0.35, files: 900 }, { kind: "other", onDisk: r.onDisk * 0.25, files: 500 }];
+  },
+  async searchScan(scanId, query) {
+    const { nodes } = done(scanId);
+    const t = (query.text ?? "").toLowerCase();
+    return nodes.filter((n) => n.parent !== null && n.name.toLowerCase().includes(t)).slice(0, 50).map((n) => ({ node: dto(n), path: n.name, kind: "other" as const }));
+  },
+  async installedPrograms() {
+    return [{ key: "demo", name: "برنامج تجريبي", version: "1.0", publisher: "Demo", sizeKb: 2_000_000, installDate: "20250101" }];
+  },
+  async installedDrivers() {
+    return [];
+  },
+  async diskHealth() {
+    return [{ name: "Demo SSD", media: "SSD", bus: "NVMe", health: "Healthy", size: 500e9, temperature: 41, hours: 6120, wear: 3, readErrors: 0, writeErrors: 0 }];
+  },
+  async hardwareNow() {
+    return { cpuName: "Demo CPU", cpuLoad: 23, memTotal: 16e9, memFree: 5e9, osName: "Demo", bootedAt: new Date().toISOString(), batteryCharge: null, batteryFull: null, batteryDesign: null };
+  },
+  async startupPrograms() {
+    return [];
+  },
+  async systemErrors() {
+    return [];
+  },
+  async openPorts() {
+    return [{ port: 3000, address: "127.0.0.1", process: "node" }];
+  },
+  async uninstallProgram() {
+    throw new Error("الإزالة تعمل في التطبيق فقط");
+  },
+  async diskSpeed() {
+    return { writeMbS: 500, readMbS: 500, sizeMb: 256 };
+  },
+  async exportCsv() {
+    throw new Error("التصدير يعمل في التطبيق فقط");
+  },
+  async appVersion() {
+    return "demo";
+  },
+  async checkUpdate() {
+    return null;
+  },
+  async installUpdate() {},
+  async diagnosticsText() {
+    return "وضع العرض";
+  },
+  async saveDiagnostics() {},
+  async licenseStatus() {
+    return { device: "JARD-DEV-0000-0000-0000", license: null, problem: null };
+  },
+  async checkLicenseKey() {
+    return { kind: "short" as const, missing: 4 };
+  },
+  async pickLicenseFile() {
+    return null;
+  },
+  async activateFile() {
+    return { ok: false as const, error: "unreadable" as const };
+  },
+  async deactivate() {},
+  async onOpenFolder() {
+    return () => {};
+  },
+  async dataFolders() {
+    return [];
+  },
+  async setStartup() {},
+  async secureDeleteFile() {
+    return { Err: { kind: "other" as const, message: "يعمل في التطبيق فقط" } };
+  },
+  async stressCpu() {
+    return { seconds: 1, threads: 4, score: 100, stopped: false };
+  },
+  async stressStop() {},
+  async openMemoryTest() {},
+  async flashCapacity() {
+    return { written: 0, verified: 0, ok: true, cancelled: true };
+  },
+  async flashStop() {},
+  async onFlashProgress() {
+    return () => {};
+  },
+  async virustotalCheck() {
+    throw new Error("يعمل في التطبيق فقط");
+  },
+  async setSchedule() {},
+  async getSchedule() {
+    return null;
+  },
+  async removeSchedule() {},
+  async networkNeighbors() {
+    return [];
+  },
+  async diskPartitions() {
+    return [];
+  },
+  async pickAnyFile() {
+    return null;
+  },
+  async startupFolder() {
+    return null;
   },
   async pickFolder() {
     return "D:\\Projects";

@@ -54,6 +54,8 @@ pub struct Node {
     /// Folders that could not be listed, this one included.
     pub denied: u64,
     pub flags: u8,
+    /// Last write time of a file, in seconds since 1970. 0 for folders and when unknown.
+    pub modified: u64,
 }
 
 impl Node {
@@ -75,6 +77,7 @@ impl Node {
             dedup_bytes: 0,
             denied: 0,
             flags: 0,
+            modified: 0,
         }
     }
 

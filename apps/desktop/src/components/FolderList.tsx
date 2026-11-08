@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { reasonText } from "../clean-text";
 import { engine, type NodeDto, type ScanId, type SortKey } from "../engine";
 import { percent, size, type Unit } from "../format";
 import { Badges } from "./Badges";
@@ -17,6 +18,8 @@ export function FolderList(props: {
   unit: Unit;
   selectedId: number | null;
   checked: Map<number, NodeDto>;
+  /** Changes when files left or came back: pages are fetched again. */
+  version: number;
   onOpen: (n: NodeDto) => void;
   onSelect: (n: NodeDto) => void;
   onToggle: (n: NodeDto) => void;
@@ -35,7 +38,7 @@ export function FolderList(props: {
     setPages(new Map());
     loading.current = new Set();
     bodyRef.current?.scrollTo({ top: 0 });
-  }, [scanId, parent.id, sort]);
+  }, [scanId, parent.id, sort, props.version]);
 
   const load = useCallback(
     (page: number) => {
@@ -49,7 +52,7 @@ export function FolderList(props: {
         () => loading.current.delete(page),
       );
     },
-    [scanId, parent.id, sort],
+    [scanId, parent.id, sort, props.version],
   );
 
   useEffect(() => {
@@ -94,9 +97,9 @@ export function FolderList(props: {
     const share = percent(metric(n), whole);
     rows.push(
       <li key={n.id} className="row" style={style} data-selected={n.id === props.selectedId} aria-setsize={total} aria-posinset={i + 1}>
-        <label className="pick">
-          <span className="sr-only">تحديد {n.name}</span>
-          <input type="checkbox" checked={props.checked.has(n.id)} onChange={() => props.onToggle(n)} />
+        <label className="pick" title={n.protected ? `مسار محمي: ${reasonText(n.protected)}` : undefined}>
+          <span className="sr-only">{n.protected ? `${n.name} محمي: ${reasonText(n.protected)}` : `تحديد ${n.name}`}</span>
+          <input type="checkbox" disabled={!!n.protected} checked={props.checked.has(n.id)} onChange={() => props.onToggle(n)} />
         </label>
         <button
           type="button"

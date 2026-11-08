@@ -45,6 +45,7 @@ pub fn list_dir(dir: &Path, vol: &Volume, want_ids: bool) -> Listing {
             traverse: false,
             apparent: 0,
             on_disk: 0,
+            modified: 0,
             flags: if ft.is_symlink() { flags::REPARSE } else { 0 },
             file_id: None,
         };
@@ -55,6 +56,7 @@ pub fn list_dir(dir: &Path, vol: &Volume, want_ids: bool) -> Listing {
             }
         } else {
             e.apparent = md.len();
+            e.modified = u64::try_from(md.mtime()).unwrap_or(0);
             e.on_disk = md.blocks() * 512; // st_blocks is always in 512-byte units
             if ft.is_file() && e.on_disk < e.apparent {
                 e.flags |= flags::SPARSE;

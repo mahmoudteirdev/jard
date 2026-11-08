@@ -27,6 +27,10 @@ export interface NodeDto {
   dedupBytes: number;
   denied: number;
   flags: number;
+  /** Last write time of a file, seconds since 1970. 0 for folders. */
+  modified: number;
+  /** Why this may not go to quarantine, when so. */
+  protected: ProtectReason | null;
 }
 
 /** scan://progress/{scanId}. Approximate until done. */
@@ -65,12 +69,259 @@ export interface Drive {
   ready: boolean;
 }
 
+export type ProtectReason =
+  | "system" | "system_file" | "system_area" | "container" | "user_folder" | "contains_protected" | "jard";
+
+export type Failure =
+  | { kind: "protected"; reason: ProtectReason }
+  | { kind: "in_use" | "denied" | "missing" | "conflict" | "no_quarantine" }
+  | { kind: "other"; message: string };
+
+export interface QuarantineItem {
+  id: string;
+  original: string;
+  isDir: boolean;
+  apparent: number;
+  onDisk: number;
+  files: number;
+  movedAt: number;
+  expiresAt: number;
+}
+
+export interface NodeOutcome {
+  nodeId: NodeId;
+  path: string;
+  item: QuarantineItem | null;
+  failure: Failure | null;
+}
+
+export type EffectKind = "synced" | "browser_cache" | "package_cache" | "installed_program";
+
+export interface CleanPreview {
+  movable: string[];
+  refused: { path: string; reason: ProtectReason }[];
+  apparent: number;
+  onDisk: number;
+  files: number;
+  effects: { kind: EffectKind; paths: string[] }[];
+}
+
+export interface RestoreResult {
+  path: string | null;
+  failure: Failure | null;
+}
+
+export type LogKind = "quarantined" | "restored" | "deleted" | "expired" | "scanned" | "secure_deleted" | "rule_failed";
+
+export interface LogEntry {
+  at: number;
+  kind: LogKind;
+  count: number;
+  bytes: number;
+}
+
+export type CandidateKind = "large" | "temp" | "old";
+
+export interface Candidate {
+  node: NodeDto;
+  path: string;
+  /** safe, redownload, duplicate, or kind_* */
+  note: string;
+}
+
+export interface DuplicateGroup {
+  size: number;
+  reclaimable: number;
+  keep: string;
+  copies: Candidate[];
+}
+
+export interface SavedScan {
+  key: string;
+  root: string;
+  savedAt: number;
+  onDisk: number;
+  apparent: number;
+  files: number;
+  dirs: number;
+  partial: boolean;
+}
+
+export interface ScanPoint {
+  at: number;
+  onDisk: number;
+  files: number;
+  partial: boolean;
+}
+
+export interface FolderChange {
+  path: string;
+  delta: number;
+  what: "grew" | "shrank" | "new" | "gone";
+}
+
+export type FileKind =
+  | "video" | "image" | "audio" | "document" | "archive" | "disk_image" | "virtual_machine" | "installer" | "program" | "other";
+
+export interface KindTotal {
+  kind: FileKind;
+  onDisk: number;
+  files: number;
+}
+
+export interface SearchQuery {
+  text?: string;
+  kind?: FileKind;
+  minSize?: number;
+  olderThan?: number;
+  noExtension?: boolean;
+  emptyFolders?: boolean;
+}
+
+export interface SearchHit {
+  node: NodeDto;
+  path: string;
+  kind: FileKind;
+}
+
+export interface Program {
+  key: string;
+  name: string;
+  version: string | null;
+  publisher: string | null;
+  sizeKb: number | null;
+  installDate: string | null;
+}
+
+export interface Driver {
+  name: string;
+  cls: string;
+  version: string;
+  date: string | null;
+  maker: string | null;
+}
+
+export interface Disk {
+  name: string;
+  media: string;
+  bus: string;
+  health: string;
+  size: number;
+  temperature: number | null;
+  hours: number | null;
+  wear: number | null;
+  readErrors: number | null;
+  writeErrors: number | null;
+}
+
+export interface Hardware {
+  cpuName: string;
+  cpuLoad: number | null;
+  memTotal: number;
+  memFree: number;
+  osName: string;
+  bootedAt: string;
+  batteryCharge: number | null;
+  batteryFull: number | null;
+  batteryDesign: number | null;
+}
+
+export interface StartupItem {
+  name: string;
+  where: string;
+  user: string | null;
+  canToggle: boolean;
+  disabled: boolean;
+}
+
+export interface SystemError {
+  provider: string;
+  id: number;
+  level: number;
+  at: string;
+  message: string | null;
+}
+
+export interface OpenPort {
+  port: number;
+  address: string;
+  process: string | null;
+}
+
+export interface UpdateInfo {
+  version: string;
+  notes: string | null;
+}
+
+export type LicenseError = "unreadable" | "bad_signature" | "other_device";
+
+export interface License {
+  device: string;
+  key: string;
+  name: string;
+  issued: number;
+}
+
+export interface LicenseStatus {
+  device: string;
+  license: License | null;
+  problem: LicenseError | null;
+}
+
+export type KeyCheck =
+  | { kind: "ok"; key: string }
+  | { kind: "short"; missing: number }
+  | { kind: "long"; extra: number }
+  | { kind: "bad_character" };
+
+export interface CapacityResult {
+  written: number;
+  verified: number;
+  ok: boolean;
+  cancelled: boolean;
+}
+
+export interface VtResult {
+  sha256: string;
+  known: boolean;
+  malicious: number;
+  suspicious: number;
+  harmless: number;
+}
+
+export interface NetworkDevice {
+  ip: string;
+  mac: string;
+  state: string;
+}
+
+export interface Partition {
+  disk: number;
+  number: number;
+  letter: string;
+  size: number;
+  kind: string;
+  fs: string;
+}
+
+export interface Schedule {
+  root: string;
+  frequency: string;
+  day: string;
+  time: string;
+  notifyFull: boolean;
+  ruleTemp: boolean;
+  ruleBrowserCache: boolean;
+  ruleOldDownloads: boolean;
+}
+
 export type Unlisten = () => void;
 
 export interface Engine {
   /** True when running against fake data in a plain browser. */
   readonly demo: boolean;
-  startScan(root: string, opts?: ScanOptions): Promise<ScanId>;
+  /** `keep` saves the result to disk for next time and for comparing. */
+  startScan(root: string, opts?: ScanOptions, keep?: boolean): Promise<ScanId>;
   cancelScan(scanId: ScanId): Promise<void>;
   scanStatus(scanId: ScanId): Promise<Status>;
   forgetScan(scanId: ScanId): Promise<void>;
@@ -81,10 +332,69 @@ export interface Engine {
   exportJson(scanId: ScanId, path: string): Promise<void>;
   listDrives(): Promise<Drive[]>;
   reveal(scanId: ScanId, nodeId: NodeId): Promise<void>;
+  previewClean(scanId: ScanId, nodeIds: NodeId[]): Promise<CleanPreview>;
+  quarantineNodes(scanId: ScanId, nodeIds: NodeId[]): Promise<NodeOutcome[]>;
+  listQuarantine(): Promise<QuarantineItem[]>;
+  restoreItem(id: string, onConflict: "fail" | "keep_both"): Promise<RestoreResult>;
+  /** For good: cannot be undone. Resolves the failure, or null. */
+  deleteItem(id: string): Promise<Failure | null>;
+  readLog(limit?: number): Promise<LogEntry[]>;
+  cleanupCandidates(scanId: ScanId, kind: CandidateKind, limit?: number): Promise<Candidate[]>;
+  findDuplicates(scanId: ScanId, limit?: number): Promise<DuplicateGroup[]>;
+  savedScans(): Promise<SavedScan[]>;
+  openSaved(key: string): Promise<ScanId>;
+  forgetSaved(): Promise<void>;
+  scanPoints(key: string): Promise<ScanPoint[]>;
+  compareScans(key: string, from: number, to: number): Promise<FolderChange[]>;
+  kindsOf(scanId: ScanId): Promise<KindTotal[]>;
+  searchScan(scanId: ScanId, query: SearchQuery, limit?: number): Promise<SearchHit[]>;
+  installedPrograms(): Promise<Program[]>;
+  installedDrivers(): Promise<Driver[]>;
+  diskHealth(): Promise<Disk[]>;
+  hardwareNow(): Promise<Hardware>;
+  startupPrograms(): Promise<StartupItem[]>;
+  systemErrors(): Promise<SystemError[]>;
+  openPorts(): Promise<OpenPort[]>;
+  /** Starts the program's own uninstaller. */
+  uninstallProgram(key: string): Promise<void>;
+  diskSpeed(): Promise<{ writeMbS: number; readMbS: number; sizeMb: number }>;
+  exportCsv(scanId: ScanId, path: string): Promise<number>;
+  appVersion(): Promise<string>;
+  /** Reads the version file. Resolves null when this is the newest. */
+  checkUpdate(): Promise<UpdateInfo | null>;
+  /** Downloads, checks the signature, installs and restarts. Progress is 0 to 100. */
+  installUpdate(onProgress: (percent: number) => void): Promise<void>;
+  diagnosticsText(): Promise<string>;
+  saveDiagnostics(path: string): Promise<void>;
+  licenseStatus(): Promise<LicenseStatus>;
+  checkLicenseKey(key: string): Promise<KeyCheck>;
+  pickLicenseFile(): Promise<string | null>;
+  activateFile(path: string): Promise<{ ok: true } | { ok: false; error: LicenseError }>;
+  deactivate(): Promise<void>;
+  /** Another copy was started with a folder ("Scan with Jard" while open). */
+  onOpenFolder(cb: (folder: string) => void): Promise<Unlisten>;
+  dataFolders(scanId: ScanId): Promise<Candidate[]>;
+  setStartup(name: string, enabled: boolean): Promise<void>;
+  secureDeleteFile(path: string): Promise<{ Ok: number; Err?: undefined } | { Ok?: undefined; Err: Failure }>;
+  stressCpu(seconds: number): Promise<{ seconds: number; threads: number; score: number; stopped: boolean }>;
+  stressStop(): Promise<void>;
+  openMemoryTest(): Promise<void>;
+  flashCapacity(root: string): Promise<CapacityResult>;
+  flashStop(): Promise<void>;
+  onFlashProgress(cb: (stage: string, done: number, total: number) => void): Promise<Unlisten>;
+  virustotalCheck(path: string, apiKey: string): Promise<VtResult>;
+  setSchedule(schedule: Schedule): Promise<void>;
+  getSchedule(): Promise<Schedule | null>;
+  removeSchedule(): Promise<void>;
+  networkNeighbors(): Promise<NetworkDevice[]>;
+  diskPartitions(): Promise<Partition[]>;
+  pickAnyFile(): Promise<string | null>;
+  /** The folder the app was started with, once. */
+  startupFolder(): Promise<string | null>;
   /** Folder picker. Resolves null if the person cancels. */
   pickFolder(): Promise<string | null>;
   /** Save dialog. Resolves null if the person cancels. */
-  pickSavePath(defaultName: string): Promise<string | null>;
+  pickSavePath(defaultName: string, extension?: "json" | "csv" | "txt"): Promise<string | null>;
   onProgress(scanId: ScanId, cb: (p: Progress) => void): Promise<Unlisten>;
   onDone(scanId: ScanId, cb: (d: Done) => void): Promise<Unlisten>;
 }
