@@ -1,0 +1,78 @@
+﻿id,kind,title,artboard_w,artboard_h,links_to,imports
+About,desktop,حول البرنامج والدعم,1440,900,License,Rail
+Brand,spec-board,الأيقونات وأصول المتجر,1440,900,,
+Cleanup,desktop,التنظيف,1440,900,States,Rail
+Compare,desktop,مقارنة فحصين,1440,900,,Rail
+Components,spec-board,مكتبة المكونات,1440,2400,,
+Drives,desktop,الأقراص والأقسام,1440,900,Health Main Tests,Rail
+Finder,desktop,البحث وشرح الملفات,1440,900,,Rail
+Guard,spec-board,ما قبل الحذف,1440,900,Cleanup History,Rail
+Health,desktop,صحة الجهاز,1440,900,Cleanup,Rail
+History,desktop,السجل والحجر المؤقت,1440,900,,Rail
+Installer,desktop,المثبّت,1440,900,,
+License,desktop,النسخة والتفعيل,1440,900,Main,Rail
+Linux,desktop,نسخة Linux,1440,900,,Rail
+Loading,spec-board,هياكل التحميل,1440,900,,
+Mac,desktop,نسخة macOS,1440,900,,Rail
+Main,desktop,التخزين,1440,960,Guard Scan Truth,Rail
+MainEn,desktop,Jard: Storage,1440,900,Cleanup Health,
+MainLight,desktop,الوضع الفاتح,1440,900,Scan,Rail
+Overview,desktop,نظرة عامة,1440,900,Cleanup Compare Health Reports Scan Security WhySlow,Rail
+P1Start,reference-lowfi,نموذج: بداية الفنّي,390,844,P2Guest P3Scan P6Log,
+P2Guest,reference-lowfi,نموذج: وضع ضيف,390,844,P1Start P3Scan,
+P3Scan,reference-lowfi,نموذج: الفحص,390,844,P2Guest P4Tests,
+P4Tests,reference-lowfi,نموذج: الاختبارات اليدوية,390,844,P5Report,
+P5Report,reference-lowfi,نموذج: التقرير,390,844,P4Tests P6Log,
+P6Log,reference-lowfi,نموذج: سجل الأجهزة,390,844,P1Start,
+Phone,android,الرئيسية,390,844,PhoneApps PhoneCheck PhoneFiles PhoneMore PhoneRoot PhoneScan,
+PhoneA11y,android,تكبير الخط والعربية,390,844,,PhoneNav
+PhoneAccess,android,طبقات الوصول,390,844,PhoneMore PhoneRoot,PhoneNav
+PhoneApps,android,التطبيقات,390,844,Phone PhoneCheck PhoneFiles PhoneMore PhoneRoot,
+PhoneBattery,android,البطارية,390,844,PhoneMore,PhoneNav
+PhoneBench,android,السرعة والشاشة,390,844,PhoneMore,PhoneNav
+PhoneCheck,android,فحص الجهاز,390,844,Phone PhoneApps PhoneFiles PhoneMore PhoneRoot,
+PhoneDevice,android,معلومات الجهاز,390,844,PhoneMore,PhoneNav
+PhoneEn,android,Jard Android: Home,390,844,PhoneApps PhoneCheck PhoneFiles PhoneMore PhoneRoot,
+PhoneExpert,android,أدوات الخبير,390,844,PhoneMore PhoneRoot,PhoneNav
+PhoneExplain,android,شرح ملف,390,844,PhoneFiles PhoneHistory,
+PhoneFiles,android,الملفات,390,844,Phone PhoneApps PhoneCheck PhoneMore PhoneRoot PhoneSaf PhoneSelect,
+PhoneGuest,android,وضع ضيف,390,844,P1Start PhoneScan,
+PhoneHistory,android,السجل والحجر,390,844,PhoneMore,PhoneNav
+PhoneKey,android,طلب مفتاح التفعيل,390,844,PhonePro,PhoneNav
+PhoneLight,android,الوضع الفاتح,390,844,PhoneApps PhoneFiles PhoneRoot PhoneScan,PhoneNav
+PhoneMore,android,المزيد,390,844,PhoneAccess PhoneBattery PhoneBench PhoneDevice PhoneExpert PhoneHistory PhoneNetwork PhoneSecurity PhoneSettings PhoneSlow PhoneUsed PhoneWidgets,PhoneNav
+PhoneNav,shared-component,تنقل الموبايل,390,68,Phone PhoneApps PhoneCheck PhoneFiles PhoneMore,
+PhoneNetwork,android,الشبكة,390,844,PhoneMore,PhoneNav
+PhoneNothing,android,ما في شي نحذفه,390,844,PhoneApps,PhoneNav
+PhoneOnboard,android,الترحيب,390,844,PhoneScan PhoneSimple,
+PhonePro,android,Pro,390,844,PhoneKey PhoneMore,PhoneNav
+PhoneResult,android,تمّ التنظيف,390,844,PhoneApps PhoneFiles PhoneHistory,PhoneNav
+PhoneRoot,android,صلاحية الروت,390,844,Phone PhoneFiles,
+PhoneSaf,android,مسار SAF,390,844,PhoneFiles,PhoneNav
+PhoneScan,android,الفحص,390,844,Phone PhoneNothing PhoneResult,
+PhoneSecurity,android,الأمان,390,844,PhoneApps PhoneMore,PhoneNav
+PhoneSelect,android,التحديد والتراجع,390,844,,PhoneNav
+PhoneSettings,android,الإعدادات,390,844,PhoneMore PhoneOnboard PhoneRoot,PhoneNav
+PhoneShopLog,android,سجل الأجهزة,390,844,PhoneGuest PhoneShopReport,PhoneNav
+PhoneShopReport,android,تقرير المحل,390,844,PhoneShopLog,
+PhoneSimple,android,وضع المبتدئ,390,844,PhoneFiles PhoneSecurity PhoneSettings PhoneSlow PhoneUsed,
+PhoneSlow,android,ليش هاتفي بطيء؟,390,844,PhoneApps PhoneBattery PhoneFiles PhoneMore,PhoneNav
+PhoneUsed,android,تقرير الهاتف المستعمل,390,844,PhoneMore,
+PhoneWidgets,android,الويدجت والإشعارات,390,844,,
+Programs,desktop,البرامج والتعريفات,1440,900,,Rail
+Proto,android,نموذج تفاعلي,390,844,,PhoneNav
+Rail,shared-component,القائمة الجانبية,228,700,Cleanup Compare Drives Finder Health History Main Overview Programs Reports Security Settings Tests,
+Reports,desktop,التقارير والأتمتة,1440,900,,Rail
+Scan,desktop,الفحص,1440,900,Main,Rail
+Security,desktop,الأمان,1440,900,,Rail
+Settings,desktop,الإعدادات,1440,900,About,Rail
+Shortcuts,desktop,الاختصارات ولوحة الأوامر,1440,900,,
+States,spec-board,الحالات,1440,900,Cleanup Drives Finder History PhoneFiles Scan,
+Tablet,android-tablet,التابلت,834,1194,PhoneExplain PhoneScan,PhoneNav
+Tests,desktop,الاختبارات والسجلات,1440,900,,Rail
+Tokens,spec-board,دليل الأسلوب,1440,1500,,
+Truth,spec-board,الأرقام الكاذبة,1440,900,Main,Rail
+WhySlow,desktop,ليش جهازي بطيء؟,1440,900,Cleanup Drives Health,Rail
+WireGuest,reference-lowfi,تخطيط أولي: فحص هاتف الزبون,1280,880,,
+WireResult,reference-lowfi,تخطيط أولي: لحظة النتيجة,1280,880,,
+WireShop,reference-lowfi,تخطيط أولي: أدوات المحل,1280,880,,

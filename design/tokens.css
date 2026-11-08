@@ -1,0 +1,92 @@
+/* جَرد — tokens.css. مولّد من tokens.json. لا تعدّل القيم هنا. */
+
+:root, :root[data-theme="dark"] {
+  --surface-base: #101412;
+  --surface-raised: #171C19;
+  --surface-hover: #1F2622;
+  --surface-selected: #2A332E;
+  --surface-sunken: #0B0E0C;
+  --ink: #EDF1EC;
+  --ink-quiet: #C7D0C9;
+  --ink-muted: #A3AEA6;
+  --ink-disabled: #6E7C74;
+  --accent: #F5B83D;
+  --accent-on: #1A1405;
+  --line: #2E3732;
+  --line-strong: #5E6B64;
+  --status-good: #8FB6FF;
+  --status-warn: #F5B83D;
+  --status-serious: #FF9E6B;
+  --status-unknown: #A3AEA6;
+}
+
+:root[data-theme="light"] {
+  --surface-base: #F4F6F2;
+  --surface-raised: #FFFFFF;
+  --surface-hover: #E6EAE4;
+  --surface-selected: #F3E7C8;
+  --surface-sunken: #E6EAE4;
+  --ink: #141A16;
+  --ink-quiet: #4A5951;
+  --ink-muted: #55615A;
+  --ink-disabled: #7E8A83;
+  --accent: #F5B83D;
+  --accent-ink: #6E4A00;
+  --accent-on: #1A1405;
+  --line: #D3D9D2;
+  --line-strong: #79857E;
+  --status-good: #2F66D0;
+  --status-warn: #6E4A00;
+  --status-serious: #B0431A;
+  --status-unknown: #55615A;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --surface-base: #F4F6F2;
+    --surface-raised: #FFFFFF;
+    --surface-hover: #E6EAE4;
+    --surface-selected: #F3E7C8;
+    --surface-sunken: #E6EAE4;
+    --ink: #141A16;
+    --ink-quiet: #4A5951;
+    --ink-muted: #55615A;
+    --ink-disabled: #7E8A83;
+    --accent: #F5B83D;
+    --accent-ink: #6E4A00;
+    --accent-on: #1A1405;
+    --line: #D3D9D2;
+    --line-strong: #79857E;
+    --status-good: #2F66D0;
+    --status-warn: #6E4A00;
+    --status-serious: #B0431A;
+    --status-unknown: #55615A;
+  }
+}
+
+:root {
+  --data-1: #F5B83D;
+  --data-2: #5B8DEF;
+  --data-3: #E8743B;
+  --data-4: #C79AF0;
+  --data-5: #4FCBA0;
+  --data-pale: #C9D6F5;
+  --data-grey: #8A958E;
+  --font-text: 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --space-1: 2px;
+  --space-2: 6px;
+  --space-3: 10px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-touch: 44px;
+  --radius: 0;
+  --rail-width: 228px;
+  --touch-min: 44px;
+}
+
+body { margin: 0; background: var(--surface-base); color: var(--ink); font: 14px/1.5 var(--font-text); }
+/* أرقام ومسارات وأكواد: دائماً LTR وأحادية العرض */
+.num, .path { direction: ltr; unicode-bidi: isolate; font-family: var(--font-mono); }
+a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
