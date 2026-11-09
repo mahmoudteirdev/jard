@@ -857,5 +857,10 @@
  "اعرضه": "Show",
  "أول": "First",
  "مجلد.": "folders.",
- "جرّب الصور المتشابهة": "Try similar photos"
+ "جرّب الصور المتشابهة": "Try similar photos",
+ "خذ نسخة احتياطية من": "Back up",
+ "ويندوز يبلّغ إن القرص متضرر. انسخ بياناتك قبل أي شي تاني.": "Windows reports this disk as damaged. Copy your data before anything else.",
+ "ويندوز يبلّغ عن تحذير على هذا القرص. انسخ بياناتك قريباً.": "Windows reports a warning on this disk. Copy your data soon.",
+ "فحص شامل": "Full check",
+ "أعدنا قراءة الأقراص والعتاد والمساحة وبرامج بدء التشغيل. هذا لا يفحص سطح القرص نفسه.": "Disks, hardware, free space and startup programs were read again. This doesn't test the disk surface itself."
 }

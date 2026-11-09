@@ -28,8 +28,19 @@ promises:
   - Three numbers per folder: apparent size, size on disk, and what isn't counted
   - No invented "health scores": readings as the system reports them
   - Android has no internet permission, so it can't send anything anywhere
-status: In development, no public release yet
+status: First public version (0.1.0), still early
 ```
+
+## Download
+
+The latest version is on the [releases page](https://github.com/mahmoudteirdev/jard/releases/latest).
+
+| You have | Get |
+|---|---|
+| Windows | `Jard_..._x64-setup.exe`, or the portable `.zip` |
+| Android 8 or newer | `Jard_..._android.apk` |
+
+The Windows files have no code-signing certificate yet, so Windows may warn about an unknown publisher. To check a download, compare its fingerprint with `SHA256SUMS.txt` on the same page.
 
 ## Screens
 

@@ -130,6 +130,7 @@ class AppState(private val context: Context) {
     /** Bumps when the tree or the quarantine changed, so screens read them again. */
     var version by mutableIntStateOf(0)
     var scanning by mutableStateOf(false)
+    var scanningPicked by mutableStateOf(false)
     var progress by mutableStateOf(ScanProgress())
     var scanError by mutableStateOf<String?>(null)
     var finishedAt by mutableStateOf(0L)
@@ -190,12 +191,18 @@ class AppState(private val context: Context) {
         prefs.edit().putBoolean("simple", value).apply()
     }
 
-    fun startScan() {
+    /** [pickedOnly] scans just your chosen folders even when everything is allowed. */
+    fun startScan(pickedOnly: Boolean = false) {
         if (scanning) return
         if (!canScan) {
             page = Page.Permission
             return
         }
+        val whole = !pickedOnly && Device.hasAllFiles(context)
+        // A narrow look, by choice, must not replace the full scan on disk or dent the history.
+        val keep = keepResults && !guest && (whole || !Device.hasAllFiles(context))
+        scanningPicked = !whole
+        if (pickedOnly) tab = Tab.Home // Where the result and its "partial" note are.
         val p = ScanProgress()
         progress = p
         scanning = true
@@ -206,13 +213,13 @@ class AppState(private val context: Context) {
         storage = Device.storage(context)
         thread(name = "jard-scan") {
             val result = runCatching {
-                if (Device.hasAllFiles(context)) Scanner.scanFiles(Environment.getExternalStorageDirectory(), p) { Device.hasAllFiles(context) }
+                if (whole) Scanner.scanFiles(Environment.getExternalStorageDirectory(), p) { Device.hasAllFiles(context) }
                 else Scanner.scanPicked(context, picked, p)
             }
             result.onSuccess {
                 tree = it
                 finishedAt = System.currentTimeMillis()
-                if (keepResults && !guest) {
+                if (keep) {
                     runCatching {
                         SavedScans.save(context, it, finishedAt)
                         SavedScans.addSummary(context, it, finishedAt / 1000)

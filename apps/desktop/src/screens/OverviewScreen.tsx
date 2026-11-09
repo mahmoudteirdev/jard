@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTreeVersion } from "../clean-session";
-import { engine, type Candidate, type Drive, type QuarantineItem, type ScanPoint } from "../engine";
+import { diskWarned } from "../disk-state";
+import { engine, type Candidate, type Disk, type Drive, type QuarantineItem, type ScanPoint, type StartupItem } from "../engine";
 import { daysUntilFull, groupTotals } from "../file-kinds";
 import { ago, num, size, ltr } from "../format";
 import { href, type RouteId } from "../routes";
@@ -24,6 +25,17 @@ export function OverviewScreen({ session, drives }: { session: Session | null; d
   const [quarantine, setQuarantine] = useState<QuarantineItem[]>([]);
   const [points, setPoints] = useState<ScanPoint[]>([]);
   const [topGroup, setTopGroup] = useState<{ name: string; onDisk: number } | null>(null);
+  const [disks, setDisks] = useState<Disk[]>([]);
+  const [startup, setStartup] = useState<StartupItem[]>([]);
+
+  useEffect(() => {
+    let live = true;
+    engine.diskHealth().then((l) => live && setDisks(l), () => {});
+    engine.startupPrograms().then((l) => live && setStartup(l), () => {});
+    return () => {
+      live = false;
+    };
+  }, []);
 
   useEffect(() => {
     engine.listQuarantine().then(setQuarantine, () => setQuarantine([]));
@@ -62,29 +74,41 @@ export function OverviewScreen({ session, drives }: { session: Session | null; d
   }
 
   const drive = session.drive;
-  const fullness = drive && drive.total > 0 ? (drive.total - drive.free) / drive.total : null;
   const tempTotal = temp.reduce((s, c) => s + c.node.onDisk, 0);
   const oldTotal = old.reduce((s, c) => s + c.node.onDisk, 0);
   const days = drive ? daysUntilFull(points, drive.free) : null;
   const quarantineTotal = quarantine.reduce((s, i) => s + i.onDisk, 0);
 
-  const actions: Action[] = [];
-  if (fullness !== null && fullness >= 0.9 && drive) {
+  const activeStartup = startup.filter((s) => !s.disabled).length;
+
+  // In order of what you'd lose: your data first, then a full disk, then what only costs time.
+  const worst = (d: Disk) => (d.health === "Unhealthy" ? 0 : 1);
+  const actions: Action[] = disks.filter(diskWarned).sort((a, b) => worst(a) - worst(b)).map((d) => ({
+    title: `خذ نسخة احتياطية من ${ltr(d.name)}`,
+    why: d.health === "Unhealthy" ? "ويندوز يبلّغ إن القرص متضرر. انسخ بياناتك قبل أي شي تاني." : "ويندوز يبلّغ عن تحذير على هذا القرص. انسخ بياناتك قريباً.",
+    cta: "تفاصيل القرص",
+    to: "health",
+  }));
+  // Every drive, not just the scanned one: the last scan may have been a single folder.
+  for (const d of drives.filter((x) => x.ready && x.total > 0 && (x.total - x.free) / x.total >= 0.9)) {
     actions.push({
-      title: `قرص ${drive.root.replace(/\\$/, "")} شبه ممتلئ`,
-      why: `المتاح ${size(drive.free, unit)} فقط من ${size(drive.total, unit)}. ويندوز يبطأ لما تقل المساحة.`,
+      title: `قرص ${d.root.replace(/\\$/, "")} شبه ممتلئ`,
+      why: `المتاح ${size(d.free, unit)} فقط من ${size(d.total, unit)}. ويندوز يبطأ لما تقل المساحة.`,
       cta: "فتح التنظيف",
       to: "cleanup",
     });
   }
+  if (session.done?.partial) {
+    actions.push({ title: "النتيجة الأخيرة ناقصة", why: "الفحص لم يكتمل، فالأرقام أقل من الحقيقة. أعد الفحص لتصير كاملة.", cta: "فتح التخزين", to: "storage" });
+  }
   if (tempTotal >= 100_000_000) {
     actions.push({ title: "ملفات مؤقتة وكاش", why: `تأخذ ${size(tempTotal, unit)} ويُعاد إنشاؤها عند الحاجة.`, cta: "مراجعة", to: "cleanup" });
   }
+  if (activeStartup >= 5) {
+    actions.push({ title: `${activeStartup} برامج تشتغل مع بداية ويندوز`, why: "كل واحد منها يأخر الإقلاع شوي، وممكن تفتحها بس لما تحتاجها.", cta: "مراجعة البرامج", to: "health" });
+  }
   if (oldTotal >= 100_000_000) {
     actions.push({ title: "ملفات كبيرة لم تتغير منذ سنة", why: `${num(old.length)} ملف بمجموع ${size(oldTotal, unit)}. راجعها قبل أي قرار.`, cta: "مراجعة", to: "cleanup" });
-  }
-  if (session.done?.partial) {
-    actions.push({ title: "النتيجة الأخيرة ناقصة", why: "الفحص لم يكتمل، فالأرقام أقل من الحقيقة. أعد الفحص لتصير كاملة.", cta: "فتح التخزين", to: "storage" });
   }
 
   const cards: { label: string; value: string; note: string; to: RouteId }[] = [
@@ -117,7 +141,7 @@ export function OverviewScreen({ session, drives }: { session: Session | null; d
           <div className="card-body"><p className="quiet">ما في شي عاجل بنتيجة هذا الفحص.</p></div>
         ) : (
           actions.slice(0, 3).map((a, i) => (
-            <div key={a.title} className="line-item action-row">
+            <div key={`${a.title}-${i}`} className="line-item action-row">
               <span className="num accent-text" style={{ fontSize: 22, width: 24 }}>{i + 1}</span>
               <span className="grow"><strong style={{ fontWeight: 700 }}>{a.title}</strong><br /><span className="muted">{a.why}</span></span>
               <a className="btn" href={href(a.to)}>{a.cta}</a>

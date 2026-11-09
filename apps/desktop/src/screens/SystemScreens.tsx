@@ -1,6 +1,7 @@
 // Programs, Health, Tests, Security and Reports: what the machine says, plainly, with no invented scores.
 
 import { useEffect, useState } from "react";
+import { diskWarned, HEALTH } from "../disk-state";
 import { engine, type Disk, type Driver, type Hardware, type OpenPort, type Program, type SystemError } from "../engine";
 import { ago, num, percent, size } from "../format";
 import { RunAsAdmin } from "./PlatformPanels";
@@ -12,20 +13,24 @@ import { useSettings } from "../settings";
 function useLoad<T>(load: () => Promise<T>, deps: unknown[] = []) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(true);
   useEffect(() => {
     let live = true;
     setError(null);
-    load().then((d) => live && setData(d), (e) => live && setError(String(e)));
+    setBusy(true);
+    load()
+      .then((d) => live && setData(d), (e) => live && setError(String(e)))
+      .finally(() => live && setBusy(false));
     return () => {
       live = false;
     };
     // eslint-style exhaustive deps would re-run on every render: `load` is a fresh closure.
   }, deps);
-  return { data, error, loading: data === null && error === null };
+  return { data, error, busy, loading: data === null && error === null };
 }
 
-const Head = ({ title, note }: { title: string; note?: string }) => (
-  <header className="page-head"><div className="title"><h1>{title}</h1>{note && <p className="muted small">{note}</p>}</div></header>
+const Head = ({ title, note, children }: { title: string; note?: string; children?: React.ReactNode }) => (
+  <header className="page-head"><div className="title"><h1>{title}</h1>{note && <p className="muted small">{note}</p>}</div>{children}</header>
 );
 const Loading = () => <p className="muted" role="status">يقرأ من النظام…</p>;
 const Failed = ({ text }: { text: string }) => <p className="note error" role="alert"><span>{text}</span></p>;
@@ -139,11 +144,6 @@ export function ProgramsScreen({ session }: { session: Session | null }) {
 
 /* ---------- health ---------- */
 
-const HEALTH: Record<string, { word: string; cls: string }> = {
-  Healthy: { word: "سليم", cls: "safety-safe" },
-  Warning: { word: "تحذير", cls: "safety-careful" },
-  Unhealthy: { word: "متضرر", cls: "safety-keep" },
-};
 const MEDIA: Record<string, string> = { SSD: "SSD", HDD: "قرص تقليدي", SCM: "SCM", Unspecified: "غير محدد" };
 
 function Meter({ name, value, pct }: { name: string; value: string; pct: number | null }) {
@@ -161,16 +161,22 @@ function Meter({ name, value, pct }: { name: string; value: string; pct: number 
 
 export function HealthScreen({ session, drives }: { session: Session | null; drives: { root: string; total: number; free: number; ready: boolean }[] }) {
   const { unit } = useSettings();
-  const disks = useLoad(() => engine.diskHealth());
-  const hw = useLoad<Hardware>(() => engine.hardwareNow());
-  const low = drives.filter((d) => d.ready && d.total > 0 && d.free / d.total < 0.1);
-  const sick = (disks.data ?? []).filter((d) => d.health !== "Healthy");
+  const [round, setRound] = useState(0);
+  const disks = useLoad(() => engine.diskHealth(), [round]);
+  const hw = useLoad<Hardware>(() => engine.hardwareNow(), [round]);
+  const fresh = useLoad(() => engine.listDrives(), [round]);
+  const low = (fresh.data ?? drives).filter((d) => d.ready && d.total > 0 && d.free / d.total < 0.1);
+  const sick = (disks.data ?? []).filter(diskWarned);
   const m = hw.data;
   const battery = m?.batteryFull && m.batteryDesign ? percent(m.batteryFull, m.batteryDesign) : null;
+  const reading = disks.busy || hw.busy || fresh.busy;
 
   return (
     <>
-      <Head title="صحة الجهاز" note="هذي قراءات النظام كما هي، بدون درجة مخترعة. بعض بيانات الأقراص تحتاج تشغيل البرنامج كمسؤول." />
+      <Head title="صحة الجهاز" note="هذي قراءات النظام كما هي، بدون درجة مخترعة. بعض بيانات الأقراص تحتاج تشغيل البرنامج كمسؤول.">
+        <button type="button" className="btn btn-primary" disabled={reading} onClick={() => setRound((r) => r + 1)}>{reading && round > 0 ? "يقرأ…" : "فحص شامل"}</button>
+      </Head>
+      {round > 0 && !reading && <p className="muted small" role="status">أعدنا قراءة الأقراص والعتاد والمساحة وبرامج بدء التشغيل. هذا لا يفحص سطح القرص نفسه.</p>}
       <RunAsAdmin />
       <section className="card" aria-labelledby="findings">
         <h2 id="findings" className="card-title">يحتاج انتباهك</h2>
@@ -233,7 +239,7 @@ export function HealthScreen({ session, drives }: { session: Session | null; dri
             )}
           </div>
         </section>
-        <StartupList />
+        <StartupList round={round} />
       </div>
       {session?.phase === "done" && <p className="muted small">مساحة القرص من آخر فحص موجودة في <a className="accent-text" href={href("overview")}>النظرة العامة</a>.</p>}
     </>

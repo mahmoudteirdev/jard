@@ -660,5 +660,10 @@
  "فتح صفحة المشاكل": "Open the issues page",
  "المكتبات المفتوحة وتراخيصها": "Open-source libraries and their licenses",
  "عرض نصوص التراخيص": "Show the license texts",
- "إخفاء النصوص": "Hide the texts"
+ "إخفاء النصوص": "Hide the texts",
+ "افحص مجلدات محددة فقط": "Scan only chosen folders",
+ "النتيجة تظهر لحد ما تفحص من جديد، وآخر فحص كامل يبقى محفوظاً.": "The result shows until your next scan, and your last full scan stays saved.",
+ "الوصول لكل الملفات مفعّل، والفحص العادي يشمل التخزين كله.": "All-files access is on, so a normal scan covers all your storage.",
+ "بدون روت؟ اختر مجلداً بنفسك": "No root? Choose a folder yourself",
+ "منتقي النظام ما بيفتح Android/data ولا جذر التخزين من أندرويد 11. Android/data يفتحه Shizuku أو روت.": "Since Android 11, the system picker won't open Android/data or the storage root. Shizuku or root can open Android/data."
 }

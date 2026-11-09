@@ -166,25 +166,33 @@ fun PermissionScreen(s: AppState, resumed: Int) {
     var asked by remember { mutableStateOf(0) }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { asked++ }
     val has = remember(resumed, asked) { Device.hasAllFiles(context) }
-    LaunchedEffect(has) { if (has) s.page = Page.None }
+    // Closes when you've just allowed it. Opened with the permission already on, it stays, for picking folders.
+    val hadIt = remember { has }
+    LaunchedEffect(has) { if (has && !hadIt) s.page = Page.None }
     Page {
-        Title("ليش نحتاج الوصول لكل الملفات؟")
-        T("لنحسب حجم كل مجلد، لازم نقرأ أسماء وأحجام الملفات. لا نفتح محتوى أي ملف، ولا نرسل شيئاً للإنترنت.", color = Jard.colors.inkQuiet)
-        for ((k, v) in listOf("نقرأ" to "أسماء الملفات وأحجامها وتواريخها فقط.", "ما نقرأ" to "محتوى الصور والرسائل والمستندات، إلا لو طلبت كشف المكررات.", "ما نرسل" to "ولا بايت. التطبيق ما عنده صلاحية إنترنت أصلاً.")) {
-            Card {
-                T(k, weight = FontWeight.Bold)
-                Muted(v)
+        if (has) {
+            Title("الوصول إلى الملفات")
+            Note("الوصول لكل الملفات مفعّل، والفحص العادي يشمل التخزين كله.", Jard.colors.statusGood)
+        } else {
+            Title("ليش نحتاج الوصول لكل الملفات؟")
+            T("لنحسب حجم كل مجلد، لازم نقرأ أسماء وأحجام الملفات. لا نفتح محتوى أي ملف، ولا نرسل شيئاً للإنترنت.", color = Jard.colors.inkQuiet)
+            for ((k, v) in listOf("نقرأ" to "أسماء الملفات وأحجامها وتواريخها فقط.", "ما نقرأ" to "محتوى الصور والرسائل والمستندات، إلا لو طلبت كشف المكررات.", "ما نرسل" to "ولا بايت. التطبيق ما عنده صلاحية إنترنت أصلاً.")) {
+                Card {
+                    T(k, weight = FontWeight.Bold)
+                    Muted(v)
+                }
             }
+            Btn("السماح بكل الملفات", {
+                if (android.os.Build.VERSION.SDK_INT >= 30) {
+                    context.startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}")))
+                } else {
+                    ask.launch(Device.LEGACY_STORAGE)
+                }
+            }, Modifier.fillMaxWidth(), BtnKind.Primary, minHeight = 52.dp)
         }
-        Btn("السماح بكل الملفات", {
-            if (android.os.Build.VERSION.SDK_INT >= 30) {
-                context.startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}")))
-            } else {
-                ask.launch(Device.LEGACY_STORAGE)
-            }
-        }, Modifier.fillMaxWidth(), BtnKind.Primary, minHeight = 52.dp)
-        T("أو اختر مجلدات محددة", weight = FontWeight.Bold)
-        Muted("الخطة البديلة إذا ما بدك تعطي الصلاحية الكاملة. الفحص يصير جزئياً، وبنقول هذا بوضوح.")
+        T(if (has) "افحص مجلدات محددة فقط" else "أو اختر مجلدات محددة", weight = FontWeight.Bold)
+        Muted(if (has) "النتيجة تظهر لحد ما تفحص من جديد، وآخر فحص كامل يبقى محفوظاً." else "الخطة البديلة إذا ما بدك تعطي الصلاحية الكاملة. الفحص يصير جزئياً، وبنقول هذا بوضوح.")
+        if (android.os.Build.VERSION.SDK_INT >= 30) Muted("منتقي النظام ما بيفتح Android/data ولا جذر التخزين من أندرويد 11. Android/data يفتحه Shizuku أو روت.")
         for (uri in s.picked) {
             Row(Modifier.fillMaxWidth().background(Jard.colors.surfaceRaised).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Num(uri.lastPathSegment?.substringAfterLast(':').orEmpty().ifEmpty { "/" }, Modifier.weight(1f))
@@ -192,7 +200,7 @@ fun PermissionScreen(s: AppState, resumed: Int) {
             }
         }
         Btn("إضافة مجلد", { pick.launch(null) }, Modifier.fillMaxWidth())
-        if (s.picked.isNotEmpty()) Btn("فحص المجلدات المختارة", { s.startScan() }, Modifier.fillMaxWidth(), BtnKind.Primary)
+        if (s.picked.isNotEmpty()) Btn("فحص المجلدات المختارة", { s.startScan(pickedOnly = true) }, Modifier.fillMaxWidth(), BtnKind.Primary)
         Btn("رجوع", { s.page = Page.None }, Modifier.fillMaxWidth())
     }
 }
@@ -213,7 +221,7 @@ fun ScanScreen(s: AppState) {
     @Suppress("UNUSED_VARIABLE") val redraw = tick
     val context = LocalContext.current
     val used = s.storage.used.coerceAtLeast(1)
-    val whole = Device.hasAllFiles(context)
+    val whole = !s.scanningPicked && Device.hasAllFiles(context)
     val pct = (p.bytes.get() * 100 / used).coerceAtMost(99).toInt()
     Page {
         Title(if (p.paused.get()) "الفحص متوقف مؤقتاً" else "جارٍ الفحص")

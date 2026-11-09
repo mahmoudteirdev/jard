@@ -368,7 +368,7 @@ fun LockedFolders(s: AppState) {
         add("/data/data" to "الملفات الخاصة")
         add("/system" to "ملفات النظام")
     }
-    T(if (level == app.jard.engine.Access.Normal) "تحتاج صلاحية إضافية" else "بالصلاحية المفعّلة", style = JardType.label, color = Jard.colors.statusSerious)
+    T(if (level == app.jard.engine.Access.Root) "بالصلاحية المفعّلة" else "تحتاج صلاحية إضافية", style = JardType.label, color = Jard.colors.statusSerious)
     for ((path, note) in paths) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = 46.dp).background(Jard.colors.surfaceRaised).clickable(role = Role.Button) { s.page = Page.Access }.padding(horizontal = 12.dp),
@@ -378,6 +378,11 @@ fun LockedFolders(s: AppState) {
             PathIcon("M12.6 10H22v4h-2v3h-4v-3h-3.4A5 5 0 1 1 12.6 10zM7 10.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 1 0 0-3.2z", Jard.colors.statusSerious, 14)
             Box(Modifier.weight(1f)) { Num(path) }
             Muted(note)
+        }
+    }
+    if (level != app.jard.engine.Access.Root) {
+        Box(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button) { s.page = Page.Permission }, contentAlignment = Alignment.Center) {
+            T("بدون روت؟ اختر مجلداً بنفسك", style = JardType.body.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline), color = Jard.colors.inkMuted)
         }
     }
 }

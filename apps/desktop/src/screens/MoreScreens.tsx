@@ -1,6 +1,7 @@
 // "Why is my PC slow?", the tools that change things, network devices, partitions, schedule and print.
 
 import { useEffect, useMemo, useState } from "react";
+import { diskWarned, HEALTH } from "../disk-state";
 import { askToClean } from "../clean-session";
 import { failureText } from "../clean-text";
 import { t } from "../i18n";
@@ -52,8 +53,8 @@ export function WhySlowScreen({ drives }: { drives: Drive[] }) {
   for (const d of (disks ?? []).filter((x) => x.media === "HDD")) {
     causes.push({ title: `${d.name} قرص تقليدي`, plain: "إذا كان ويندوز مثبتاً عليه، فهذا غالباً أكبر سبب للبطء، والانتقال إلى SSD يفرق كتير.", metric: "HDD", cta: "تفاصيل القرص", to: "health", weight: 60 });
   }
-  for (const d of (disks ?? []).filter((x) => x.health !== "Healthy")) {
-    causes.push({ title: `${d.name} عليه تحذير`, plain: "هذا تحذير على سلامة بياناتك أكثر من كونه مشكلة سرعة. خذ نسخة احتياطية.", metric: d.health, cta: "تفاصيل القرص", to: "health", weight: 90 });
+  for (const d of (disks ?? []).filter(diskWarned)) {
+    causes.push({ title: `${d.name} عليه تحذير`, plain: "هذا تحذير على سلامة بياناتك أكثر من كونه مشكلة سرعة. خذ نسخة احتياطية.", metric: HEALTH[d.health]?.word ?? d.health, cta: "تفاصيل القرص", to: "health", weight: 90 });
   }
   causes.sort((a, b) => b.weight - a.weight);
   const loading = startup === null || hw === null || disks === null;
@@ -129,19 +130,19 @@ export function Leftovers({ session, programs }: { session: Session | null; prog
 
 /* ---------- startup toggles (used by Health) ---------- */
 
-export function StartupList() {
+export function StartupList({ round = 0 }: { round?: number }) {
   const [items, setItems] = useState<StartupItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const load = () => engine.startupPrograms().then(setItems, (e) => setError(String(e)));
   useEffect(() => {
     void load();
-  }, []);
+  }, [round]);
   const toggle = (s: StartupItem) => {
     setError(null);
     engine.setStartup(s.name, !!s.disabled).then(load, (e) => setError(String(e)));
   };
   return (
-    <section className="card" aria-labelledby="startup">
+    <section className="card" aria-labelledby="startup" style={{ gridColumn: "1 / -1" }}>
       <h2 id="startup" className="card-title">برامج بدء التشغيل</h2>
       {items === null && <p className="muted card-body">يقرأ…</p>}
       {error && <p className="note error" role="alert"><span>{error}</span></p>}
