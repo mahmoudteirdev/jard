@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "tauri": "tauri",
-    "i18n:check": "node --experimental-strip-types scripts/i18n-extract.mjs"
+    "i18n:check": "node --experimental-strip-types scripts/i18n-extract.mjs",
+    "build:portable": "tauri build --no-bundle && node scripts/portable.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "5.3.0",

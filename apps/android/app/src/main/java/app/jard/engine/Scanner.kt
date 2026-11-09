@@ -14,6 +14,7 @@ class ScanProgress {
     val files = AtomicLong()
     val bytes = AtomicLong()
     val cancelled = AtomicBoolean()
+    val paused = AtomicBoolean()
 
     @Volatile
     var current: String = ""
@@ -34,6 +35,7 @@ object Scanner {
                 for (id in stack) nodes[id].partial = true
                 break
             }
+            while (progress.paused.get() && !progress.cancelled.get()) Thread.sleep(150)
             val id = stack.removeLast()
             val dir = nodes[id]
             progress.current = dir.location

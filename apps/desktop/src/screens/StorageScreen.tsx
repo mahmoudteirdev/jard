@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { askToClean, useTreeVersion } from "../clean-session";
 import { reasonText } from "../clean-text";
 import { FolderList, KIND_COLOR } from "../components/FolderList";
@@ -59,6 +59,7 @@ function FirstRun({ drives, failed }: { drives: Drive[]; failed?: Session }) {
         <button type="button" className="btn" onClick={pick}>اختر مجلداً…</button>
       </div>
       {error && <p role="alert" className="note error"><span>{error}</span></p>}
+      {!failed && <BeforeFirstScan />}
       {rest.length > 0 && (
         <section aria-labelledby="other-drives" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <h2 id="other-drives" className="label muted">أقراص أخرى</h2>
@@ -70,6 +71,35 @@ function FirstRun({ drives, failed }: { drives: Drive[]; failed?: Session }) {
         </section>
       )}
     </div>
+  );
+}
+
+/** What the first scan needs, and doesn't (Installer board). */
+function BeforeFirstScan() {
+  const [admin, setAdmin] = useState<boolean | null>(null);
+  const [said, setSaid] = useState<string | null>(null);
+  useEffect(() => {
+    engine.isAdmin().then(setAdmin, () => setAdmin(false));
+  }, []);
+  return (
+    <section aria-labelledby="before" className="before-first">
+      <h2 id="before" className="label muted">قبل أول فحص</h2>
+      <div className="line-box"><strong>الفحص العادي يكفي للبداية</strong><p className="muted">ملفاتك ومجلداتك تُقرأ بلا صلاحيات خاصة.</p></div>
+      <div className="line-box"><strong>صلاحية المسؤول لقراءة صحة الأقراص</strong><p className="muted">بيانات S.M.A.R.T وسجل الأخطاء ومجلدات النظام فقط. تُطلب عند الحاجة لا من الآن.</p></div>
+      <div className="line-box"><strong>بدون إنترنت افتراضياً</strong><p className="muted">لا تحديثات تلقائية ولا إرسال بيانات، إلا إذا فعّلتها.</p></div>
+      {admin === false && (
+        <div className="actions-row">
+          <button
+            type="button"
+            className="btn"
+            onClick={() => void engine.relaunchAsAdmin().then((yes) => !yes && setSaid("ما وافق ويندوز على الصلاحية، فالبرنامج مستمر كما هو."), (e) => setSaid(String(e)))}
+          >
+            تشغيل كمسؤول
+          </button>
+          {said && <span role="status" className="small">{said}</span>}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -218,7 +248,8 @@ function DriveUsage({ root, drive, unit, dedup }: { root: NodeDto; drive: Drive;
 }
 
 function Results({ session }: { session: Session }) {
-  const { unit, dedupHardlinks, keepResults } = useSettings();
+  const { unit, dedupHardlinks, keepResults, level } = useSettings();
+  const simple = level === "simple";
   const scanId = session.id;
   const [folderId, setFolderId] = useState(lastFolder.get(session.id) ?? session.done?.rootId ?? 0);
   const version = useTreeVersion();
@@ -232,6 +263,13 @@ function Results({ session }: { session: Session }) {
 
   const folder = chain[chain.length - 1];
   const root = chain[0];
+  // For the window-wide key handler, which is only set up once.
+  const checkedRef = useRef(checked);
+  checkedRef.current = checked;
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
+  const folderRef = useRef(folder);
+  folderRef.current = folder;
 
   useEffect(() => {
     let live = true;
@@ -274,6 +312,48 @@ function Results({ session }: { session: Session }) {
       return next;
     });
   };
+
+  // A folder picked from the command palette.
+  useEffect(() => {
+    const on = (e: Event) => open({ id: (e as CustomEvent<number>).detail } as NodeDto);
+    window.addEventListener("jard:show-node", on);
+    return () => window.removeEventListener("jard:show-node", on);
+  }, []);
+
+  // The shortcuts that act on what's selected (Shortcuts board). Typing in a field is left alone.
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest("input:not([type=checkbox]), textarea, [role=dialog]")) return;
+      const ctrl = e.ctrlKey || e.metaKey;
+      const current = [...checkedRef.current.values()];
+      if (e.key === "Escape" && current.length) {
+        setChecked(new Map());
+      } else if (ctrl && e.key.toLowerCase() === "a" && folderRef.current) {
+        e.preventDefault();
+        void engine.getChildren(scanId, folderRef.current.id, "on_disk", 20_000).then((kids) => {
+          setChecked(new Map(kids.filter((n) => !n.protected).map((n) => [n.id, n])));
+        });
+      } else if (e.key === "Delete") {
+        const picks = current.length ? current : selectedRef.current && !selectedRef.current.protected ? [selectedRef.current] : [];
+        if (picks.length) {
+          e.preventDefault();
+          askToClean({ scanId, nodes: picks, from: "storage" });
+        }
+      } else if (ctrl && e.shiftKey && e.key.toLowerCase() === "c" && selectedRef.current) {
+        e.preventDefault();
+        void engine.getPath(scanId, selectedRef.current.id).then((p) => navigator.clipboard.writeText(p)).then(
+          () => setNotice({ kind: "info", text: "نُسخ المسار." }),
+          (err) => setNotice({ kind: "error", text: String(err) }),
+        );
+      } else if (ctrl && e.key === "Enter" && selectedRef.current) {
+        e.preventDefault();
+        void engine.reveal(scanId, selectedRef.current.id).catch((err) => setNotice({ kind: "error", text: String(err) }));
+      }
+    };
+    window.addEventListener("keydown", on);
+    return () => window.removeEventListener("keydown", on);
+  }, [scanId]);
 
   const metric = (n: NodeDto) => (sort === "apparent" ? n.apparent : n.onDisk);
   const mapItems: MapItem[] = useMemo(() => {
@@ -325,12 +405,14 @@ function Results({ session }: { session: Session }) {
         {chain.length > 1 && (
           <button type="button" className="btn" onClick={() => open(chain[chain.length - 2]!)}>مستوى أعلى</button>
         )}
-        <div className="seg" role="group" aria-label="الوحدة">
-          {(["GB", "GiB"] as Unit[]).map((u) => (
-            <button key={u} type="button" className="num" aria-pressed={u === unit} onClick={() => updateSettings({ unit: u })}>{u}</button>
-          ))}
-        </div>
-        <button type="button" className="btn" onClick={exportJson}>تصدير</button>
+        {!simple && (
+          <div className="seg" role="group" aria-label="الوحدة">
+            {(["GB", "GiB"] as Unit[]).map((u) => (
+              <button key={u} type="button" className="num" aria-pressed={u === unit} onClick={() => updateSettings({ unit: u })}>{u}</button>
+            ))}
+          </div>
+        )}
+        {!simple && <button type="button" className="btn" onClick={exportJson}>تصدير</button>}
         <button type="button" className="btn btn-primary" onClick={rescan}>فحص جديد</button>
       </header>
 
@@ -351,6 +433,9 @@ function Results({ session }: { session: Session }) {
         </p>
       )}
 
+      <p className="muted small">
+        الأرقام مختلفة عن مستكشف ويندوز؟ <a className="accent-text" href={href("truth")}>ليش الأرقام تختلف</a>
+      </p>
       {session.drive && folder.id === root.id && <DriveUsage root={root} drive={session.drive} unit={unit} dedup={session.dedup} />}
       {folder.id === root.id && <KindBar scanId={scanId} version={version} unit={unit} />}
 
@@ -359,7 +444,7 @@ function Results({ session }: { session: Session }) {
           <div className="list-head">
             <h2 id="list-title" className="label muted">المحتويات · <span className="num">{num(folder.childCount)}</span></h2>
             <div className="seg" role="group" aria-label="الترتيب">
-              {SORTS.map((s) => (
+              {SORTS.filter((s) => !simple || s.key !== "apparent").map((s) => (
                 <button key={s.key} type="button" aria-pressed={s.key === sort} onClick={() => setSort(s.key)}>{s.name}</button>
               ))}
             </div>
@@ -373,8 +458,10 @@ function Results({ session }: { session: Session }) {
             checked={checked}
             version={version}
             onOpen={open}
+            onUp={() => chain.length > 1 && open(chain[chain.length - 2]!)}
             onSelect={setSelected}
             onToggle={toggle}
+            onCheck={(n) => setChecked((m) => (m.has(n.id) || n.protected ? m : new Map(m).set(n.id, n)))}
           />
         </section>
 
@@ -412,7 +499,7 @@ function Results({ session }: { session: Session }) {
       {shown && (
         <section className="detail" aria-label="تفاصيل المحدد">
           <span className="path" title={detailPath} aria-label={detailPath}>{middle(detailPath, 90)}</span>
-          <span className="facts">
+          <span className="facts" hidden={simple}>
             <span>ظاهري <span className="num">{size(shown.apparent, unit)}</span></span>
             <span>على القرص <span className="num">{size(shown.onDisk, unit)}</span></span>
             <span title="سحابي غير منزّل + نسخ إضافية من روابط صلبة">

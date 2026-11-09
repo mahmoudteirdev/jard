@@ -21,6 +21,8 @@
 
 pub mod drives;
 mod duplicates;
+mod similar;
+mod truth;
 mod kinds;
 mod node;
 mod persist;
@@ -35,6 +37,8 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 
 pub use duplicates::{find_duplicates, DuplicateGroup};
+pub use similar::{find_similar, SimilarGroup, SimilarPhoto};
+pub use truth::TruthFacts;
 pub use kinds::{kind_totals, Kind, KindTotal, Query};
 pub use node::{flags, Node, NodeId};
 pub use progress::{Progress, Snapshot};

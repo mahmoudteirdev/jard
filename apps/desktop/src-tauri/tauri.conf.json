@@ -13,6 +13,7 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "title": "جَرد",
         "width": 1440,
         "height": 900,
@@ -48,7 +49,9 @@
         ],
         "displayLanguageSelector": false,
         "installerHooks": "nsis-hooks.nsh",
-        "installerIcon": "icons/icon.ico"
+        "installerIcon": "icons/icon.ico",
+        "sidebarImage": "icons/installer-sidebar.bmp",
+        "headerImage": "icons/installer-header.bmp"
       }
     },
     "shortDescription": "Jard: disk analyzer and cleaner",
@@ -58,7 +61,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE4Q0VDNDI2NjJFNDRBRTgKUldUb1N1UmlKc1RPcUR4MWluNEVsN2t0SHJFWlU0Sk5CbGdSK0F6NzI4VWxoRGhGc0FTNmpIZ1oK",
       "endpoints": [
-        "https://github.com/mahmoud-teir/jard/releases/latest/download/latest.json"
+        "https://github.com/mahmoudteirdev/jard/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"

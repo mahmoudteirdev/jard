@@ -21,8 +21,10 @@ export function FolderList(props: {
   /** Changes when files left or came back: pages are fetched again. */
   version: number;
   onOpen: (n: NodeDto) => void;
+  onUp: () => void;
   onSelect: (n: NodeDto) => void;
   onToggle: (n: NodeDto) => void;
+  onCheck: (n: NodeDto) => void;
 }) {
   const { scanId, parent, sort } = props;
   const total = parent.childCount;
@@ -80,6 +82,56 @@ export function FolderList(props: {
   const metric = (n: NodeDto) => (sort === "apparent" ? n.apparent : n.onDisk);
   const whole = metric(parent);
 
+  const nodeAt = (i: number) => pages.get(Math.floor(i / PAGE))?.[i % PAGE];
+  const wantFocus = useRef<number | null>(null);
+  const focusRow = (i: number) => {
+    const el = bodyRef.current;
+    if (!el || i < 0 || i >= total) return;
+    const top = i * ROW_H;
+    if (top < el.scrollTop) el.scrollTop = top;
+    else if (top + ROW_H > el.scrollTop + el.clientHeight) el.scrollTop = top + ROW_H - el.clientHeight;
+    wantFocus.current = i;
+    const row = el.querySelector<HTMLElement>(`[data-i="${i}"] .open`);
+    if (row) {
+      row.focus();
+      wantFocus.current = null;
+    }
+  };
+  // The row wasn't drawn yet when asked for: it gets focus as soon as it is.
+  useEffect(() => {
+    if (wantFocus.current !== null) focusRow(wantFocus.current);
+  });
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    const row = (e.target as HTMLElement).closest<HTMLElement>("[data-i]");
+    if (!row || e.ctrlKey || e.metaKey) return;
+    const i = Number(row.dataset.i);
+    const n = nodeAt(i);
+    const rtl = document.documentElement.dir === "rtl";
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (e.shiftKey && n) {
+        props.onCheck(n);
+        const next = nodeAt(i + (e.key === "ArrowDown" ? 1 : -1));
+        if (next) props.onCheck(next);
+      }
+      focusRow(i + (e.key === "ArrowDown" ? 1 : -1));
+    } else if (e.key === (rtl ? "ArrowLeft" : "ArrowRight")) {
+      e.preventDefault();
+      if (n?.isDir && n.childCount > 0) {
+        props.onOpen(n);
+        wantFocus.current = 0;
+      }
+    } else if (e.key === (rtl ? "ArrowRight" : "ArrowLeft")) {
+      e.preventDefault();
+      props.onUp();
+      wantFocus.current = 0;
+    } else if (e.key === " " && n && !n.protected) {
+      e.preventDefault();
+      props.onToggle(n);
+    }
+  };
+
   const rows = [];
   for (let i = first; i <= last; i++) {
     const n = pages.get(Math.floor(i / PAGE))?.[i % PAGE];
@@ -96,7 +148,7 @@ export function FolderList(props: {
     const canOpen = n.isDir && n.childCount > 0;
     const share = percent(metric(n), whole);
     rows.push(
-      <li key={n.id} className="row" style={style} data-selected={n.id === props.selectedId} aria-setsize={total} aria-posinset={i + 1}>
+      <li key={n.id} data-i={i} className="row" style={style} data-selected={n.id === props.selectedId} aria-setsize={total} aria-posinset={i + 1}>
         <label className="pick" title={n.protected ? `مسار محمي: ${reasonText(n.protected)}` : undefined}>
           <span className="sr-only">{n.protected ? `${n.name} محمي: ${reasonText(n.protected)}` : `تحديد ${n.name}`}</span>
           <input type="checkbox" disabled={!!n.protected} checked={props.checked.has(n.id)} onChange={() => props.onToggle(n)} />
@@ -133,7 +185,7 @@ export function FolderList(props: {
       {total === 0 ? (
         <p className="muted" style={{ padding: 16 }}>هذا المجلد فارغ.</p>
       ) : (
-        <ul className="rows" style={{ height: total * ROW_H, ["--row-h" as string]: `${ROW_H}px` }} aria-label={`محتويات ${parent.name}`}>
+        <ul className="rows" style={{ height: total * ROW_H, ["--row-h" as string]: `${ROW_H}px` }} aria-label={`محتويات ${parent.name}`} onKeyDown={onKeyDown}>
           {rows}
         </ul>
       )}

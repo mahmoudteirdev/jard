@@ -8,10 +8,11 @@
 
 | الجزء | التقنية | الحالة |
 |---|---|---|
-| محرك الفحص | Rust، `crates/jard-scan` | موجود. اختبارات وحدة تمر، ومسار ويندوز لم يُترجم بعد: `cargo check` على جهازك أول شيء |
-| واجهة سطح المكتب | Tauri + React + TypeScript، `tokens.css` | غير مبنية |
-| تطبيق أندرويد | Kotlin + Jetpack Compose، `Theme.kt` | غير مبني |
-| ماك ولينكس | نفس الواجهة، لوحتا `Mac` و`Linux` تشرحان الفروق | بعد ويندوز |
+| محرك الفحص | Rust، `crates/jard-scan` | مبني ومختبر على ويندوز. قوائم الأقراص على لينكس وماك عبر `df -kP` |
+| الحجر والتفعيل | Rust، `crates/jard-clean` و`crates/jard-license` | مبنيان ومختبران |
+| واجهة سطح المكتب | Tauri + React + TypeScript، `tokens.css` | مبنية ومختبرة على ويندوز، بالعربية والإنجليزية |
+| تطبيق أندرويد | Kotlin + Jetpack Compose، `Theme.kt` | القلب مختبر على Galaxy S9 (أندرويد 10)، وكل الشاشات على محاكي أندرويد 15. الروت وShizuku لم يُختبرا بالصلاحية فعلياً |
+| ماك ولينكس | نفس الواجهة، لوحتا `Mac` و`Linux` تشرحان الفروق | الكود والإعدادات موجودة، **ولم يُبنَ أو يُشغَّل عليهما بعد** |
 
 سطح المكتب وأندرويد **منتجان منفصلان** بهوية بصرية مشتركة. لا كود مشترك بينهما سوى التوكنز.
 
@@ -60,21 +61,34 @@
 
 ## 5. عقد الربط بين الواجهة والمحرك (Tauri)
 
-مبني على أنواع `jard-scan` الفعلية (`Node`، `Snapshot`، `Options`). الشجرة مصفوفة مسطّحة؛ **معرّف الابن دائماً أكبر من معرّف أبيه**. لا تُرسل الشجرة كلها إلى الواجهة: تُطلب مجلداً مجلداً.
+مبني على أنواع `jard-scan` الفعلية. الشجرة مصفوفة مسطّحة؛ **معرّف الابن دائماً أكبر من معرّف أبيه**. لا تُرسل الشجرة كلها إلى الواجهة: تُطلب مجلداً مجلداً. الأسماء الكاملة في `apps/desktop/src/engine/types.ts` (الواجهة `Engine`)، وهي المرجع إذا اختلف شيء هنا.
 
 ```text
-start_scan(root: string, opts?: { threads?: number, maxDepth?: number, dedupHardlinks?: boolean }) -> scanId
-cancel_scan(scanId)
-get_children(scanId, nodeId, sort: "on_disk" | "apparent" | "name", limit?: number, offset?: number) -> NodeDto[]
-get_path(scanId, nodeId) -> string
-get_node(scanId, nodeId) -> NodeDto
-export_json(scanId, path)
+start_scan(root, opts?: { threads?, maxDepth?, dedupHardlinks?, excluded?: string[] }, keep?: boolean) -> scanId
+cancel_scan(scanId) · scan_status(scanId) · forget_scan(scanId)
+get_children(scanId, nodeId, sort: "on_disk" | "apparent" | "name", limit?, offset?) -> NodeDto[]
+get_node(scanId, nodeId) · get_path(scanId, nodeId) · get_ancestors(scanId, nodeId) · reveal(scanId, nodeId)
+export_json(scanId, path) · list_drives() · startup_folder()
+
+preview_clean(scanId, nodeIds) · quarantine_nodes(scanId, nodeIds) · list_quarantine()
+restore_item(id, onConflict) · delete_item(id) · read_log(limit?)
+elevated_quarantine(scanId, nodeIds) · elevated_restore(id, keepBoth) · elevated_delete(id)   // -> { declined, result }
+cleanup_candidates(scanId, kind, limit?) · data_folders(scanId)
+find_duplicates(scanId, limit?) · find_similar_photos(scanId) · truth_facts(scanId) · volume_facts()
+saved_scans() · open_saved(key) · forget_saved() · scan_points(key) · compare_scans(key, from, to) · kinds_of(scanId) · search_scan(scanId, query, limit?)
 
 event  scan://progress/{scanId}  -> { files, dirs, bytes, denied, current, done, cancelled }   // كل 100ms كحد أقصى
-event  scan://done/{scanId}      -> { rootId, elapsedMs, partial: boolean }
+event  scan://done/{scanId}      -> { rootId, elapsedMs, partial, error }
+event  jard://open-folder        -> string   // "افحص بجرد" والبرنامج مفتوح
 ```
 
-`NodeDto` = حقول `Node` نفسها بـ camelCase: `id, name, parent, children (ids), ownApparent, ownOnDisk, ownFiles, apparent, onDisk, files, dirs, cloudBytes, dedupBytes, denied, flags`.
+`NodeDto`: `id, name, parent, isDir, childCount, ownApparent, ownOnDisk, ownFiles, apparent, onDisk, files, dirs, cloudBytes, dedupBytes, denied, flags, modified, protected`. `childCount` بدل قائمة الأبناء، لأن الأبناء يُطلبون صفحة صفحة. `protected` سبب المنع إن وُجد، فلا يُعرض إجراء النقل أصلاً.
+
+**وضعيات بلا نافذة** (`main.rs`): `--scheduled <folder>` للمهمة المجدولة، `--startup-check` عند الدخول، `--uninstall-clean scans|quarantine|license` للمُزيل، `--elevated <dir> <job> <sha256>` لعملية واحدة بصلاحية مسؤول، `--after-exit <pid>` لإعادة التشغيل كمسؤول.
+
+**صلاحية المسؤول لعملية واحدة:** البرنامج يبقى بلا صلاحيات. نسخة قصيرة العمر تقرأ ملف المهمة، تتحقق من بصمته المكتوبة في سطر أوامرها، تنفّذ عبر `Store` نفسه (فالمسارات المحمية تبقى ممنوعة)، وتخرج.
+
+**النسخة المحمولة:** ملف `jard.portable` بجانب البرنامج يجعل كل البيانات، ومنها بيانات WebView، في مجلد `data` بجانبه. تُبنى بـ `pnpm build:portable`.
 
 الرايات (`flags`): `CLOUD=1, COMPRESSED=2, SPARSE=4, REPARSE=8, ENCRYPTED=16, HARDLINK=32, DENIED=64, PARTIAL=128`. شارات السحابة والضغط مرسومة في Main وTruth؛ باقي الرايات (`REPARSE`، `ENCRYPTED`، `DENIED`، `HARDLINK`) بلا شارة مرسومة بعد، فصمّمها بنفس شكل الشارات الموجودة.
 
@@ -83,7 +97,7 @@ event  scan://done/{scanId}      -> { rootId, elapsedMs, partial: boolean }
 - **ثلاثة أرقام لكل مجلد**: الظاهري، على القرص، وما لا يُحسب (سحابي + روابط صلبة). لا تعرض رقماً واحداً دون ذكر أيهما. زر GB/GiB يبدّل الوحدة في كل الواجهة.
 - أرقام التقدم أثناء الفحص تقريبية (`Snapshot` يُقرأ بلا قفل)؛ الرقم النهائي من الشجرة بعد `rollup`.
 - القوائم الطويلة (أكثر من 200 صف): تمرير افتراضي (virtualized) وطلب `limit/offset`.
-- أي عملية حذف تمرّ بالحجر المؤقت 30 يوماً مع تراجع. **غير موجودة في المحرك بعد.**
+- أي عملية حذف تمرّ بالحجر المؤقت 30 يوماً مع تراجع، وهذا مبني في `jard-clean` وفي `Quarantine.kt`.
 
 ## 6. سلوك الحالات الحدية
 
@@ -110,6 +124,21 @@ event  scan://done/{scanId}      -> { rootId, elapsedMs, partial: boolean }
 | تكبير خط النظام حتى 200% | المحتوى يمرّ إلى تمرير عمودي بدل القص. اللوحات الحالية بارتفاع ثابت و`overflow:hidden` ولا تمثل هذا | اقتراح؛ إلزامي للبناء |
 | بطارية منخفضة أثناء فحص طويل (أندرويد) | يُعرض تنبيه ويُعرض خيار الإيقاف المؤقت | اقتراح |
 | البحث عن التحديثات عند أول تشغيل | يُسأل المستخدم مرة واحدة فقط. الخيار الافتراضي "لا"، وإغلاق السؤال يُعدّ "لا" ولا يتكرر، ولا اتصال بالإنترنت قبل الموافقة. يُغيَّر لاحقاً من الإعدادات. يُبنى مع آلية التحديث لا قبلها | قرار المنتج؛ لم يُرسم بعد |
+
+### قرارات اتُّخذت أثناء البناء، خلاف اللوحات أو زيادة عليها
+
+| القرار | السبب |
+|---|---|
+| لا رقم "من 100" في "ليش هاتفي بطيء؟" ولا في تقارير الهاتف المستعمل والمحل | أي رقم إجمالي مخترع. نعرض كل قراءة وكلمتها: سليم، تنبيه، تحذير، غير مفحوص |
+| أندرويد بلا إذن إنترنت، فتبويبا "الأجهزة" و"المنافذ" يشرحان ذلك بدل فحص الشبكة | وعد "ولا بايت" أهم، ونسخة سطح المكتب فيها هذا الفحص. استهلاك الإنترنت لكل تطبيق يأتي من عدّادات النظام ولا يحتاج الإذن |
+| VirusTotal على سطح المكتب فقط | يحتاج إنترنت. لذلك خيار لوحة PhoneSettings غير موجود |
+| الأسهم في قائمة المجلدات: في العربية الأيسر يدخل والأيمن يرجع | ملاحظة لوحة Shortcuts تقول العكس لكنها تبرر بـ"اتجاه القراءة"، وهذا لا يتحقق إلا هكذا، ويوافق سهم الصف. اعكسه إذا قصدت غير ذلك |
+| إقران Shizuku يتم داخل تطبيق Shizuku | الإقران من جرد يحتاج إذن شبكة |
+| مسح الكاش التلقائي يحتاج Shizuku أو روت | أندرويد لا يسمح به لتطبيق عادي |
+| كل ميزات Pro مفتوحة حالياً، والتفعيل شغال | السعر وحدّ التجربة لم يُحسما (القسم 10) |
+| سجل المحل يحفظ تقارير الجهاز نفسه فقط، ووضع الضيف لا يحفظ شيئاً | القرار المفتوح رقم 1 لم يُحسم، فلا طريقة لنقل تقرير هاتف زبون إلى سجل الفنّي إلا بمشاركته |
+
+**لم يُبنَ:** الفحص السريع عبر MFT (مفتاح لوحة Settings)، ورسم "مرات الشحن خلال 7 أيام" في PhoneBattery لأنه يحتاج خدمة خلفية دائمة، ولوحة `Tablet`: الشاشات تتمدد ولا تُقص لكن ليس لها تخطيط خاص.
 
 ## 7. الأصول المطلوبة (لوحة Brand)
 

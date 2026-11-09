@@ -1,21 +1,119 @@
 import { useEffect, useState } from "react";
 import { askToClean, useTreeVersion } from "../clean-session";
 import { reasonText } from "../clean-text";
-import { engine, type FileKind, type SearchHit, type SearchQuery } from "../engine";
+import { engine, type FileKind, type NodeDto, type Program, type SearchHit, type SearchQuery, type SimilarPhoto } from "../engine";
+import { Leftovers } from "./MoreScreens";
 import { explain, KIND_NAMES } from "../file-kinds";
-import { middle, size } from "../format";
+import { middle, num, size } from "../format";
 import { href } from "../routes";
 import type { Session } from "../scan-session";
 import { useSettings } from "../settings";
 
-type Tab = "all" | "noext" | "empty";
+type Tab = "all" | "noext" | "empty" | "similar" | "left";
 
 const TABS: { id: Tab; name: string }[] = [
   { id: "all", name: "الأكبر" },
   { id: "noext", name: "بلا امتداد" },
   { id: "empty", name: "مجلدات فارغة" },
+  { id: "similar", name: "صور متشابهة" },
+  { id: "left", name: "بقايا برامج" },
 ];
 const YEAR = 365 * 86_400;
+
+function LeftoversTab({ session }: { session: Session | null }) {
+  const [programs, setPrograms] = useState<Program[] | null>(null);
+  useEffect(() => {
+    engine.installedPrograms().then(setPrograms, () => setPrograms([]));
+  }, []);
+  if (!programs) return <p className="muted" role="status">يقرأ البرامج المثبتة…</p>;
+  return <Leftovers session={session} programs={programs} />;
+}
+
+/** Photos of the same shot: the person looks and chooses. Nothing is picked for them. */
+function SimilarPhotos({ scanId, version }: { scanId: number; version: number }) {
+  const { unit } = useSettings();
+  const [groups, setGroups] = useState<SimilarPhoto[][] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [checked, setChecked] = useState<Map<number, NodeDto>>(new Map());
+
+  useEffect(() => {
+    setGroups(null);
+    setChecked(new Map());
+  }, [scanId, version]);
+
+  const find = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      setGroups(await engine.findSimilarPhotos(scanId));
+    } catch (e) {
+      setError(String(e));
+    }
+    setBusy(false);
+  };
+
+  if (!groups) {
+    return (
+      <div className="empty" style={{ paddingTop: 8 }}>
+        <p className="quiet">يفتح صورك ليقارن شكلها، على هذا الجهاز فقط، فممكن ياخد وقت. الصور السحابية لا تُقرأ حتى لا تُنزَّل.</p>
+        {error && <p className="note error" role="alert"><span>{error}</span></p>}
+        <div className="actions">
+          <button type="button" className="btn" disabled={busy} onClick={() => void find()}>{busy ? "يقارن الصور…" : "ابحث عن صور متشابهة"}</button>
+        </div>
+      </div>
+    );
+  }
+  if (groups.length === 0) {
+    return (
+      <div className="empty" style={{ paddingTop: 8 }}>
+        <p className="quiet">ما لقينا صوراً متشابهة في هذا الفحص.</p>
+        <div className="actions"><a className="btn" href={href("cleanup")}>افتح التنظيف</a></div>
+      </div>
+    );
+  }
+  const picked = [...checked.values()];
+  const toggle = (n: NodeDto) =>
+    setChecked((m) => {
+      const next = new Map(m);
+      if (next.has(n.id)) next.delete(n.id);
+      else next.set(n.id, n);
+      return next;
+    });
+  return (
+    <>
+      <section className="card" aria-label="مجموعات الصور">
+        <p className="muted line-item" role="status">
+          <span className="num">{num(groups.length)}</span> مجموعة. متشابهة جداً، وليست نسخاً مطابقة: اختر الأوضح واحذف الباقي بنفسك.
+        </p>
+        {groups.map((g) => (
+          <div key={g[0]!.node.id} className="similar-group">
+            <div className="similar-row">
+              {g.map((p, i) => (
+                <label key={p.node.id} className="similar-photo" data-checked={checked.has(p.node.id)} title={p.path}>
+                  {p.thumbnail ? <img src={p.thumbnail} alt={p.node.name} /> : <span className="muted small">ما قدرنا نعرض الصورة</span>}
+                  <span className="name">{p.node.name}</span>
+                  <span className="muted label"><span className="num">{p.width}×{p.height}</span> · <span className="num">{size(p.node.onDisk, unit)}</span></span>
+                  <span className="pick-line">
+                    <input type="checkbox" disabled={!!p.node.protected} checked={checked.has(p.node.id)} onChange={() => toggle(p.node)} />
+                    <span className="small">{i === 0 ? "الأعلى دقة" : "تحديد"}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+      {picked.length > 0 && (
+        <section className="pickbar" aria-label="المحدد">
+          <strong role="status">تم تحديد <span className="num">{num(picked.length)}</span> · <span className="num">{size(picked.reduce((s, n) => s + n.onDisk, 0), unit)}</span></strong>
+          <button type="button" className="btn" onClick={() => setChecked(new Map())}>إلغاء التحديد</button>
+          <button type="button" className="btn" onClick={() => askToClean({ scanId, nodes: picked, from: "finder" })}>نقل إلى الحجر</button>
+        </section>
+      )}
+    </>
+  );
+}
 
 /** Find by name and filters across the last scan, with a plain answer to "what is this?". */
 export function FinderScreen({ session }: { session: Session | null }) {
@@ -114,7 +212,11 @@ export function FinderScreen({ session }: { session: Session | null }) {
       </div>
       {error && <p className="note error" role="alert"><span>{error}</span></p>}
 
-      {hits === null ? (
+      {tab === "similar" ? (
+        <SimilarPhotos scanId={scanId} version={version} />
+      ) : tab === "left" ? (
+        <LeftoversTab session={session} />
+      ) : hits === null ? (
         <p className="muted" role="status">يبحث…</p>
       ) : hits.length === 0 ? (
         <div className="empty" style={{ paddingTop: 8 }}>

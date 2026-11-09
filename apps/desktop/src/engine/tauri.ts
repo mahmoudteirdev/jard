@@ -4,7 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import type {
-  Candidate, CleanPreview, License, LicenseError, Done, Drive, DuplicateGroup, Engine, Failure, FolderChange, KindTotal, LogEntry, NodeDto,
+  Candidate, CleanPreview, Elevated, Integration, PlatformFacts, SimilarPhoto, TruthFacts, VolumeFacts, License, LicenseError, Done, Drive, DuplicateGroup, Engine, Failure, FolderChange, KindTotal, LogEntry, NodeDto,
   NodeOutcome, Progress, QuarantineItem, RestoreResult, SavedScan, ScanId, ScanPoint, SearchHit, Status,
 } from "./types";
 
@@ -32,6 +32,19 @@ export const tauriEngine: Engine = {
   readLog: (limit) => invoke<LogEntry[]>("read_log", { limit: limit ?? null }),
   cleanupCandidates: (scanId, kind, limit) => invoke<Candidate[]>("cleanup_candidates", { scanId, kind, limit: limit ?? null }),
   findDuplicates: (scanId, limit) => invoke<DuplicateGroup[]>("find_duplicates", { scanId, limit: limit ?? null }),
+  findSimilarPhotos: (scanId) => invoke<SimilarPhoto[][]>("find_similar_photos", { scanId }),
+  truthFacts: (scanId) => invoke<TruthFacts>("truth_facts", { scanId }),
+  volumeFacts: () => invoke<VolumeFacts>("volume_facts"),
+  elevatedQuarantine: (scanId, nodeIds) => invoke<Elevated<NodeOutcome[]>>("elevated_quarantine", { scanId, nodeIds }),
+  elevatedRestore: (id, keepBoth) => invoke<Elevated<RestoreResult>>("elevated_restore", { id, keepBoth }),
+  elevatedDelete: (id) => invoke<Elevated<Failure | null>>("elevated_delete", { id }),
+  isAdmin: () => invoke<boolean>("is_admin"),
+  relaunchAsAdmin: () => invoke<boolean>("relaunch_as_admin"),
+  getIntegration: () => invoke<Integration>("get_integration"),
+  setContextMenu: (enabled) => invoke("set_context_menu", { enabled }),
+  setStartCheck: (enabled) => invoke("set_start_check", { enabled }),
+  isPortable: () => invoke<boolean>("is_portable"),
+  platformFacts: () => invoke<PlatformFacts>("platform_facts"),
   savedScans: () => invoke<SavedScan[]>("saved_scans"),
   openSaved: (key) => invoke<ScanId>("open_saved", { key }),
   forgetSaved: () => invoke("forget_saved"),

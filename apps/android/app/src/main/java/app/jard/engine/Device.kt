@@ -142,10 +142,17 @@ fun countText(n: Long): String = String.format(Locale.US, "%,d", n)
 fun agoText(seconds: Long, now: Long = System.currentTimeMillis() / 1000): String {
     if (seconds <= 0) return "—"
     val d = (now - seconds) / 86_400
+    // Arabic counts have their own forms for one, two, three to ten, and above.
+    fun count(n: Long, one: String, two: String, few: (Long) -> String, many: (Long) -> String) = when {
+        n <= 1 -> one
+        n == 2L -> two
+        n in 3..10 -> few(n)
+        else -> many(n)
+    }
     return when {
         d < 1 -> "اليوم"
-        d < 30 -> "قبل $d يوم"
-        d < 365 -> "قبل ${d / 30} شهر"
-        else -> "قبل ${d / 365} سنة"
+        d < 30 -> count(d, "قبل يوم", "قبل يومين", { "قبل $it أيام" }, { "قبل $it يوماً" })
+        d < 365 -> count(d / 30, "قبل شهر", "قبل شهرين", { "قبل $it أشهر" }, { "قبل $it شهراً" })
+        else -> count(d / 365, "قبل سنة", "قبل سنتين", { "قبل $it سنوات" }, { "قبل $it سنة" })
     }
 }

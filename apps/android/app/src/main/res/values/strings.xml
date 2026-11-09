@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">جَرد</string>
+    <string name="widget_large">جَرد: التخزين</string>
+    <string name="widget_small">جَرد: المتاح</string>
 </resources>

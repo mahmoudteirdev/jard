@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -70,7 +71,7 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
             JardTheme(dark = dark) {
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                CompositionLocalProvider(LocalLayoutDirection provides if (I18n.english) LayoutDirection.Ltr else LayoutDirection.Rtl) {
                     Root(s, resumed.intValue)
                 }
             }
@@ -108,20 +109,46 @@ fun PathIcon(d: String, color: Color, size: Int = 20) {
 @Composable
 private fun Root(s: AppState, resumed: Int) {
     BackHandler(enabled = s.page != Page.None || s.tab != Tab.Home) {
-        if (s.page == Page.Scan) s.progress.cancelled.set(true)
-        if (s.page != Page.None) s.page = Page.None else s.tab = Tab.Home
+        if (s.page != Page.None) s.goBack() else s.tab = Tab.Home
     }
+    LaunchedEffect(Unit) { if (!s.onboarded && !s.guest && s.page == Page.None) s.page = Page.Onboard }
+    // These show a colour or a test across the whole screen, with nothing around it.
+    val bare = s.page == Page.Scan || s.page == Page.Onboard || s.page == Page.Pixels || s.page == Page.Test
     Column(Modifier.fillMaxSize().background(Jard.colors.surfaceBase).safeDrawingPadding()) {
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when (s.page) {
+                Page.Onboard -> OnboardScreen(s, resumed)
                 Page.Permission -> PermissionScreen(s, resumed)
                 Page.Scan -> ScanScreen(s)
+                Page.Result -> ResultScreen(s)
                 Page.History -> HistoryScreen(s)
                 Page.Settings -> SettingsScreen(s)
                 Page.About -> AboutScreen(s)
-                Page.Tools -> ToolsScreen(s)
+                Page.Clean -> CleanScreen(s)
+                Page.Explain -> ExplainScreen(s)
+                Page.Slow -> SlowScreen(s)
+                Page.Device -> DeviceScreen(s)
+                Page.Battery -> BatteryScreen(s)
+                Page.Bench -> BenchScreen(s)
+                Page.Pixels -> PixelsScreen(s)
+                Page.Used -> UsedScreen(s)
+                Page.Security -> SecurityScreen(s)
+                Page.Network -> NetworkScreen(s, resumed)
+                Page.Compare -> CompareScreen(s)
+                Page.Widgets -> WidgetsScreen(s)
+                Page.Access -> AccessScreen(s, resumed)
+                Page.Root -> RootScreen(s)
+                Page.Expert -> ExpertScreen(s)
+                Page.Pro -> ProScreen(s)
+                Page.Key -> KeyScreen(s)
+                Page.Guest -> GuestScreen(s)
+                Page.ShopLog -> ShopLogScreen(s)
+                Page.ShopReport -> ShopReportScreen(s)
+                Page.ShopSetup -> ShopSetupScreen(s)
+                Page.ShopCompare -> ShopCompareScreen(s)
+                Page.Test -> ManualTestScreen(s)
                 Page.None -> when (s.tab) {
-                    Tab.Home -> HomeScreen(s, resumed)
+                    Tab.Home -> if (s.simple) SimpleHome(s) else HomeScreen(s, resumed)
                     Tab.Files -> FilesScreen(s)
                     Tab.Apps -> AppsScreen(s, resumed)
                     Tab.Check -> CheckScreen(s)
@@ -129,7 +156,7 @@ private fun Root(s: AppState, resumed: Int) {
                 }
             }
         }
-        if (s.page != Page.Scan) {
+        if (!bare) {
             Row(Modifier.fillMaxWidth().height(68.dp).background(Jard.colors.surfaceRaised)) {
                 for ((tab, name, d) in NAV) {
                     val on = s.page == Page.None && s.tab == tab

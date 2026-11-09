@@ -18,15 +18,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +42,7 @@ import app.jard.design.Jard
 import app.jard.design.JardMono
 import app.jard.design.JardSpace
 import app.jard.design.JardType
+import app.jard.engine.RowTag
 
 @Composable
 fun T(
@@ -50,7 +54,7 @@ fun T(
     align: TextAlign? = null,
 ) {
     BasicText(
-        text,
+        I18n.tr(text),
         modifier,
         style = style.copy(color = color, fontWeight = weight ?: style.fontWeight, textAlign = align ?: TextAlign.Unspecified),
     )
@@ -131,7 +135,7 @@ fun CheckRow(checked: Boolean, onChange: (Boolean) -> Unit, label: String, modif
             .fillMaxWidth()
             .heightIn(min = JardSpace.touchMin)
             .toggleable(value = checked, enabled = enabled, role = Role.Checkbox, onValueChange = onChange)
-            .semantics { contentDescription = label },
+            .semantics { contentDescription = I18n.tr(label) },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -175,4 +179,110 @@ fun Swatch(color: Color) {
 @Composable
 fun Spacer4() {
     Box(Modifier.width(4.dp).defaultMinSize(minHeight = 1.dp))
+}
+
+/** A page's title with its way back. The arrow follows the reading direction. */
+@Composable
+fun Head(s: AppState, title: String, note: String? = null) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(
+            Modifier.size(JardSpace.touchMin).clickable(role = Role.Button, onClickLabel = I18n.tr("رجوع")) { s.goBack() }
+                .semantics { contentDescription = I18n.tr("رجوع") },
+            contentAlignment = Alignment.Center,
+        ) {
+            PathIcon("M9 4l8 8-8 8-2-2 6-6-6-6z", Jard.colors.ink)
+        }
+        Title(title)
+    }
+    if (note != null) Muted(note)
+}
+
+@Composable
+fun FactRow(k: String, v: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Muted(k, Modifier.weight(1f))
+        Value(v)
+    }
+}
+
+/** A reading: numbers and codes in mono, words in the text face. */
+@Composable
+fun Value(text: String, modifier: Modifier = Modifier) {
+    val shown = I18n.tr(text)
+    if (I18n.hasArabic(shown)) T(shown, modifier, color = Jard.colors.ink) else Num(shown, modifier)
+}
+
+@Composable
+fun Tabs(items: List<Pair<String, String>>, current: String, onPick: (String) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        for ((id, name) in items) {
+            val on = id == current
+            Box(
+                Modifier.weight(1f).heightIn(min = JardSpace.touchMin)
+                    .background(if (on) Jard.colors.surfaceSelected else Color.Transparent)
+                    .border(BorderStroke(1.dp, if (on) Jard.colors.accent else Jard.colors.line))
+                    .semantics { selected = on }
+                    .clickable(role = Role.Tab) { onPick(id) }
+                    .padding(horizontal = 4.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center,
+            ) { T(name, weight = if (on) FontWeight.SemiBold else FontWeight.Normal, align = TextAlign.Center) }
+        }
+    }
+}
+
+/** One line that opens something. */
+@Composable
+fun LinkRow(name: String, note: String? = null, onClick: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().heightIn(min = JardSpace.touchMin).clickable(role = Role.Button, onClick = onClick).padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+    ) {
+        T(name, weight = FontWeight.Medium)
+        if (note != null) Muted(note)
+    }
+    Box(Modifier.fillMaxWidth().height(1.dp).background(Jard.colors.line))
+}
+
+@Composable
+fun Toggle(on: Boolean, label: String, note: String? = null, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
+    CheckRow(on, onChange, I18n.tr(label), enabled = enabled) {
+        Column(Modifier.weight(1f)) {
+            T(label, color = if (enabled) Jard.colors.ink else Jard.colors.inkDisabled)
+            if (note != null) Muted(note)
+        }
+    }
+}
+
+/** A text field: label above, what went wrong below. */
+@Composable
+fun Field(value: String, onChange: (String) -> Unit, label: String, modifier: Modifier = Modifier, error: String? = null, mono: Boolean = false, minLines: Int = 1) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Muted(label)
+        BasicTextField(
+            value,
+            onChange,
+            Modifier.fillMaxWidth().heightIn(min = JardSpace.touchMin)
+                .background(Jard.colors.surfaceBase)
+                .border(BorderStroke(1.dp, if (error != null) Jard.colors.statusSerious else Jard.colors.lineStrong))
+                .padding(10.dp)
+                .semantics { contentDescription = I18n.tr(label) },
+            textStyle = (if (mono) JardType.number else JardType.body).copy(color = Jard.colors.ink),
+            cursorBrush = SolidColor(Jard.colors.accent),
+            minLines = minLines,
+        )
+        if (error != null) T(error, style = JardType.caption, color = Jard.colors.statusSerious)
+    }
+}
+
+/** A word beside a value, never colour alone. */
+@Composable
+fun TagWord(tag: RowTag) {
+    if (tag.word.isEmpty()) return
+    val color = when (tag) {
+        RowTag.Good -> Jard.colors.statusGood
+        RowTag.Warn -> Jard.colors.statusWarn
+        RowTag.Bad -> Jard.colors.statusSerious
+        else -> Jard.colors.inkMuted
+    }
+    T(tag.word, style = JardType.label, color = color)
 }

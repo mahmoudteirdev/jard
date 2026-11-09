@@ -5,6 +5,7 @@ import { go, href } from "../routes";
 import { openSaved, type Session } from "../scan-session";
 import { useSettings } from "../settings";
 import { PartitionsCard } from "./MoreScreens";
+import { PlatformPanel } from "./PlatformPanels";
 import { scanAndShow } from "./StorageScreen";
 
 const KIND: Record<DriveKind, string> = {
@@ -96,6 +97,7 @@ export function DrivesScreen({ drives, session }: { drives: Drive[]; session: Se
           <button type="submit" className="btn" disabled={!path.trim()} style={{ alignSelf: "end" }}>فحص</button>
         </form>
       </section>
+      <PlatformPanel />
       <PartitionsCard />
       <p className="muted small">شكّاك في فلاشة جديدة؟ <a className="accent-text" href={href("tests")}>اختبر سعتها الحقيقية</a></p>
     </>

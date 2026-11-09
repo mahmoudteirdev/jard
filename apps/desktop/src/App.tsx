@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Rail } from "./components/Rail";
+import { undoLastMove } from "./clean-session";
+import { CommandPalette, ShortcutsDialog } from "./components/CommandPalette";
 import { ScreenBoundary } from "./components/ScreenBoundary";
+import { TruthScreen } from "./screens/TruthScreen";
 import { engine, type Drive } from "./engine";
-import { RAIL_ITEMS, useRoute, type RouteId } from "./routes";
+import { go, RAIL_ITEMS, useRoute, type RouteId } from "./routes";
 import { openSaved, useSession } from "./scan-session";
 import { AboutScreen, LicenseScreen, UpdatesQuestion } from "./screens/AboutScreens";
 import { CleanupScreen } from "./screens/CleanupScreen";
@@ -27,6 +30,7 @@ const TITLES: Record<RouteId, string> = {
   about: "حول جَرد",
   license: "النسخة والتفعيل",
   whyslow: "ليش جهازي بطيء؟",
+  truth: "ليش الأرقام تختلف عن ويندوز؟",
 } as Record<RouteId, string>;
 
 export function App() {
@@ -64,7 +68,55 @@ export function App() {
     document.title = `${TITLES[route]} · جَرد`;
   }, [route]);
 
-  const railCurrent: RouteId = route === "scan" ? "storage" : route === "guard" ? "cleanup" : route === "about" || route === "license" ? "settings" : route === "whyslow" ? "overview" : route;
+  const [palette, setPalette] = useState(false);
+  const [help, setHelp] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const rescan = useCallback(() => {
+    if (session?.phase === "done" || session?.phase === "failed") void scanAndShow(session.root, session.drive, dedupHardlinks, keepResults);
+    else go("storage");
+  }, [session, dedupHardlinks, keepResults]);
+  const openHelp = useCallback(() => setHelp(true), []);
+
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      const ctrl = e.ctrlKey || e.metaKey;
+      const key = e.key.toLowerCase();
+      if (ctrl && key === "k") {
+        e.preventDefault();
+        setPalette((p) => !p);
+      } else if (ctrl && key === "/") {
+        e.preventDefault();
+        setHelp((h) => !h);
+      } else if (e.key === "F5") {
+        // The window's own reload would drop what's on screen.
+        e.preventDefault();
+        rescan();
+      } else if (ctrl && key === "f") {
+        e.preventDefault();
+        go("finder");
+      } else if (ctrl && key === "l") {
+        e.preventDefault();
+        go("cleanup");
+      } else if (ctrl && key === "z" && !(e.target as HTMLElement | null)?.closest("input, textarea")) {
+        e.preventDefault();
+        void undoLastMove().then(({ back, of }) => {
+          if (of > 0) setToast(back === of ? "تم التراجع: رجعت الملفات إلى أماكنها." : `رجع ${back} من ${of}. الباقي في الحجر المؤقت.`);
+          else setToast("ما في عملية نقل للتراجع عنها.");
+        });
+      }
+    };
+    window.addEventListener("keydown", on);
+    return () => window.removeEventListener("keydown", on);
+  }, [rescan]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const railCurrent: RouteId = route === "scan" || route === "truth" ? "storage" : route === "guard" ? "cleanup" : route === "about" || route === "license" ? "settings" : route === "whyslow" ? "overview" : route;
 
   return (
     <>
@@ -72,6 +124,9 @@ export function App() {
         تخطّ إلى المحتوى
       </a>
       <UpdatesQuestion />
+      {palette && <CommandPalette session={session} rescan={rescan} onClose={() => setPalette(false)} openHelp={openHelp} />}
+      {help && <ShortcutsDialog onClose={() => setHelp(false)} />}
+      {toast && <p className="note info toast" role="status"><span>{toast}</span></p>}
       <div className="app">
         <Rail current={railCurrent}>
           {(route === "storage" || route === "scan") && <DriveList drives={drives} session={session} />}
@@ -103,6 +158,8 @@ export function App() {
             <TestsScreen drives={drives} />
           ) : route === "security" ? (
             <SecurityScreen />
+          ) : route === "truth" ? (
+            <TruthScreen session={session} />
           ) : route === "reports" ? (
             <ReportsScreen session={session} />
           ) : route === "whyslow" ? (

@@ -13,7 +13,7 @@ use jard_clean::capacity::{test_capacity, CapacityResult};
 use jard_clean::{Failure, Store};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, State};
 
 use crate::system::{hidden, powershell};
 
@@ -252,11 +252,11 @@ pub(crate) struct Schedule {
 }
 
 pub(crate) fn data_dir_for_task() -> Option<PathBuf> {
-    std::env::var_os("LOCALAPPDATA").map(|d| PathBuf::from(d).join("app.jard.desktop"))
+    crate::paths::data_dir_headless()
 }
 
 fn schedule_path(app: &AppHandle) -> Result<PathBuf, String> {
-    app.path().app_local_data_dir().map_err(|e| e.to_string()).map(|d| d.join("schedule.json"))
+    crate::paths::data_dir(app).map(|d| d.join("schedule.json"))
 }
 
 fn valid_time(t: &str) -> bool {

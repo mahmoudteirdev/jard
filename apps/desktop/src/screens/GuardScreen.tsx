@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { clearPendingClean, treeChanged, usePendingClean } from "../clean-session";
+import { clearPendingClean, rememberMoved, treeChanged, usePendingClean } from "../clean-session";
 import { canRetry, effectText, failureText, reasonText } from "../clean-text";
 import { engine, type CleanPreview, type Failure, type NodeOutcome, type QuarantineItem } from "../engine";
 import { middle, num, size } from "../format";
 import { go, href } from "../routes";
 import { useSettings } from "../settings";
 
-type Stage = "preview" | "working" | "result";
+type Stage = "preview" | "working" | "elevate" | "result";
 
 /** The step before anything moves: a dry run, then what actually happened (Guard board). */
 export function GuardScreen() {
@@ -18,6 +18,7 @@ export function GuardScreen() {
   const [failed, setFailed] = useState<NodeOutcome[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [undone, setUndone] = useState<string | null>(null);
+  const [declined, setDeclined] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export function GuardScreen() {
     setMoved([]);
     setFailed([]);
     setUndone(null);
+    setDeclined(false);
     engine.previewClean(pending.scanId, pending.nodes.map((n) => n.id)).then(
       (p) => live && setPreview(p),
       (e) => live && setError(String(e)),
@@ -61,9 +63,39 @@ export function GuardScreen() {
     setError(null);
     try {
       const out = await engine.quarantineNodes(pending.scanId, ids);
-      setMoved((m) => [...m, ...out.flatMap((o) => (o.item ? [o.item] : []))]);
-      setFailed(out.filter((o) => o.failure));
+      const items = [...moved, ...out.flatMap((o) => (o.item ? [o.item] : []))];
+      setMoved(items);
+      rememberMoved(items);
+      const left = out.filter((o) => o.failure);
+      setFailed(left);
       treeChanged();
+      // Refused by Windows: worth asking for rights. The rest of the batch has already moved.
+      if (left.some((o) => o.failure?.kind === "denied")) {
+        setStage("elevate");
+        return;
+      }
+    } catch (e) {
+      setError(String(e));
+    }
+    setStage("result");
+  };
+
+  const elevate = async () => {
+    const ids = failed.filter((f) => f.failure?.kind === "denied").map((f) => f.nodeId);
+    setStage("working");
+    setDeclined(false);
+    try {
+      const answer = await engine.elevatedQuarantine(pending.scanId, ids);
+      if (answer.declined || !answer.result) {
+        setDeclined(true);
+      } else {
+        const items = [...moved, ...answer.result.flatMap((o) => (o.item ? [o.item] : []))];
+        setMoved(items);
+        rememberMoved(items);
+        // What was refused is now answered. What failed for other reasons stays on the list.
+        setFailed([...failed.filter((f) => f.failure?.kind !== "denied"), ...answer.result.filter((o) => o.failure)]);
+        treeChanged();
+      }
     } catch (e) {
       setError(String(e));
     }
@@ -81,6 +113,7 @@ export function GuardScreen() {
       }
     }
     setMoved(left);
+    rememberMoved([]);
     treeChanged();
     setUndone(problems.length ? `تعذّر استرجاع ${problems.length}. ${problems[0]}` : "تم التراجع: رجعت الملفات إلى أماكنها.");
   };
@@ -96,7 +129,8 @@ export function GuardScreen() {
         </div>
         <ol aria-label="المرحلة" className="steps">
           <li aria-current={stage === "preview" ? "step" : undefined}>1 · معاينة</li>
-          <li aria-current={stage !== "preview" ? "step" : undefined}>2 · النتيجة</li>
+          <li aria-current={stage === "elevate" ? "step" : undefined}>2 · الصلاحية</li>
+          <li aria-current={stage === "working" || stage === "result" ? "step" : undefined}>3 · النتيجة</li>
         </ol>
       </header>
 
@@ -165,9 +199,30 @@ export function GuardScreen() {
 
       {stage === "working" && <p role="status" className="quiet">ينقل…</p>}
 
+      {stage === "elevate" && (
+        <section className="card" aria-labelledby="uac" style={{ maxWidth: 720 }}>
+          <h2 id="uac" className="card-title">يحتاج صلاحية مسؤول</h2>
+          <div className="card-body">
+            <p style={{ fontSize: 16 }}>
+              <span className="num">{num(failed.filter((f) => f.failure?.kind === "denied").length)}</span> من المحدد رفض ويندوز نقله. باقي المحدد انتقل. ويندوز رح يسأل عن صلاحية مسؤول لمرة واحدة.
+            </p>
+            <ul className="muted truth-list">
+              <li>نطلب الصلاحية لهذه العملية فقط، ولا نبقيها مفتوحة.</li>
+              <li>المسارات المحمية تبقى ممنوعة حتى مع الصلاحية.</li>
+              <li>إذا رفضت، نترك هذه الملفات مكانها ونخبرك بها.</li>
+            </ul>
+            <div className="actions-row">
+              <button type="button" className="btn btn-primary" onClick={() => void elevate()}>طلب الصلاحية</button>
+              <button type="button" className="btn" onClick={() => setStage("result")}>متابعة بدون صلاحية</button>
+            </div>
+          </div>
+        </section>
+      )}
+
       {stage === "result" && (
         <>
           {undone && <p className="note info" role="status"><span>{undone}</span></p>}
+          {declined && <p className="note warn" role="status"><span>ما وافق ويندوز على الصلاحية، فالملفات اللي بتحتاجها بقيت مكانها.</span></p>}
           <div className="guard-grid">
             <section className="card" aria-labelledby="ok">
               <h2 id="ok" className="card-title">

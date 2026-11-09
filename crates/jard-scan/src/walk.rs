@@ -23,13 +23,15 @@ pub struct Options {
     pub max_depth: Option<u32>,
     /// Count each hard-linked file once. Cheap on Unix; on Windows it opens every file, so it is off by default.
     pub dedup_hardlinks: bool,
+    /// Folders the person chose to skip. They stay listed, with nothing read under them.
+    pub excluded: Vec<PathBuf>,
 }
 
 // Not derivable: dedup defaults to on for Unix, off for Windows.
 #[allow(clippy::derivable_impls)]
 impl Default for Options {
     fn default() -> Self {
-        Options { threads: 0, max_depth: None, dedup_hardlinks: cfg!(unix) }
+        Options { threads: 0, max_depth: None, dedup_hardlinks: cfg!(unix), excluded: Vec::new() }
     }
 }
 
@@ -69,6 +71,8 @@ fn scan_inner(root: &Path, opts: &Options, progress: &Progress) -> io::Result<Tr
         nodes: Mutex::new(vec![root_node]),
         seen_links: Mutex::new(HashSet::new()),
         volume: sys::Volume::for_path(&root),
+        // Canonical like the root, so a folder matches however it was typed. One that's gone can't match.
+        excluded: opts.excluded.iter().filter_map(|p| std::fs::canonicalize(p).ok()).collect(),
         progress,
         opts,
     };
@@ -104,6 +108,7 @@ struct Walker<'a> {
     nodes: Mutex<Vec<Node>>,
     seen_links: Mutex<HashSet<(u64, u64)>>,
     volume: sys::Volume,
+    excluded: Vec<PathBuf>,
     progress: &'a Progress,
     opts: &'a Options,
 }
@@ -113,6 +118,18 @@ fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
 }
 
 impl Walker<'_> {
+    fn is_excluded(&self, path: &Path) -> bool {
+        // Windows and macOS paths are compared without case; on Linux "Data" and "data" differ.
+        let same = |a: &Path| {
+            if cfg!(target_os = "linux") {
+                a == path
+            } else {
+                a.as_os_str().eq_ignore_ascii_case(path.as_os_str())
+            }
+        };
+        self.excluded.iter().any(|x| same(x))
+    }
+
     fn work(&self) {
         while let Some(job) = self.next_job() {
             self.list(job);
@@ -174,7 +191,7 @@ impl Walker<'_> {
                 if e.is_dir {
                     if e.traverse {
                         node.flags |= flags::PARTIAL;
-                        if descend {
+                        if descend && !self.is_excluded(&job.path.join(&e.name)) {
                             subdirs.push((id, e.name));
                         }
                     }

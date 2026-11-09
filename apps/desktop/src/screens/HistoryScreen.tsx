@@ -25,13 +25,31 @@ function ItemRow({ item, onChange, setNotice }: {
       setConflict(true);
       return;
     }
-    if (r.failure) setNotice({ kind: "error", text: `${name}: ${failureText(r.failure)}` });
+    if (r.failure?.kind === "denied") {
+      // Moved with administrator rights, or the folder needs them: ask, for this one item.
+      const answer = await engine.elevatedRestore(item.id, onConflict === "keep_both");
+      const done = answer.result;
+      if (answer.declined || !done) setNotice({ kind: "error", text: `${name}: ما وافق ويندوز على الصلاحية، فبقي في الحجر.` });
+      else if (done.failure?.kind === "conflict") {
+        setConflict(true);
+        return;
+      } else if (done.failure) setNotice({ kind: "error", text: `${name}: ${failureText(done.failure)}` });
+      else setNotice({ kind: "info", text: `رجع إلى ${done.path}` });
+    } else if (r.failure) setNotice({ kind: "error", text: `${name}: ${failureText(r.failure)}` });
     else setNotice({ kind: "info", text: `رجع إلى ${r.path}` });
     treeChanged();
     onChange();
   };
   const remove = async () => {
-    const f = await engine.deleteItem(item.id);
+    let f = await engine.deleteItem(item.id);
+    if (f?.kind === "denied") {
+      const answer = await engine.elevatedDelete(item.id);
+      if (answer.declined) {
+        setNotice({ kind: "error", text: `${name}: ما وافق ويندوز على الصلاحية، فبقي في الحجر.` });
+        return;
+      }
+      f = answer.result;
+    }
     if (f) setNotice({ kind: "error", text: `${name}: ${failureText(f)}` });
     else setNotice({ kind: "info", text: `حُذف ${name} نهائياً، وتحررت ${size(item.onDisk, unit)}.` });
     onChange();

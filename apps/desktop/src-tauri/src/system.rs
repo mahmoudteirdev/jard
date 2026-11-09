@@ -11,7 +11,7 @@ use std::time::Instant;
 
 use serde::Serialize;
 use serde_json::Value;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, State};
 
 use crate::{read, Scans};
 
@@ -108,6 +108,17 @@ $rows=Get-WinEvent -FilterHashtable @{LogName='System';Level=1,2;StartTime=(Get-
  Select-Object @{n='provider';e={$_.ProviderName}},@{n='id';e={$_.Id}},@{n='level';e={$_.Level}},@{n='at';e={$_.TimeCreated.ToString('o')}},@{n='message';e={ if($_.Message){ ($_.Message -split "`n")[0] } }};
 ConvertTo-Json -Compress -Depth 3 -InputObject @($rows)"#;
 
+/// Restore points need administrator rights to read; `known` says whether we could. Which drives are
+/// locked by BitLocker comes from Explorer's own property, which needs no rights.
+const VOLUMES: &str = r#"
+$vols=@(Get-CimInstance Win32_Volume); $known=$false; $shadow=@();
+try { $s=@(Get-CimInstance Win32_ShadowStorage -ErrorAction Stop); $known=$true;
+ $shadow=@($s | ForEach-Object { $id=$_.Volume.DeviceID; $v=$vols | Where-Object { $_.DeviceID -eq $id } | Select-Object -First 1;
+  [pscustomobject]@{ root=$v.DriveLetter; used=[int64]$_.UsedSpace } }) } catch {}
+$locked=@(); $shell=New-Object -ComObject Shell.Application;
+foreach($d in Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3'){ $p=$shell.NameSpace($d.DeviceID + '\').Self.ExtendedProperty('System.Volume.BitLockerProtection'); if($p -eq 6){ $locked+=$d.DeviceID } };
+ConvertTo-Json -Compress -Depth 3 -InputObject ([pscustomobject]@{ known=$known; shadow=$shadow; locked=$locked })"#;
+
 const PORTS: &str = r#"
 $names=@{}; Get-Process | ForEach-Object { $names[[int]$_.Id]=$_.ProcessName };
 $rows=Get-NetTCPConnection -State Listen | Group-Object LocalAddress,LocalPort | ForEach-Object { $c=$_.Group | Where-Object { $_.OwningProcess -ne 0 } | Select-Object -First 1; if(-not $c){ $c=$_.Group[0] };
@@ -143,6 +154,11 @@ pub(crate) async fn startup_programs() -> Result<Value, String> {
 #[tauri::command]
 pub(crate) async fn system_errors() -> Result<Value, String> {
     reading(EVENTS).await
+}
+
+#[tauri::command]
+pub(crate) async fn volume_facts() -> Result<Value, String> {
+    reading(VOLUMES).await
 }
 
 #[tauri::command]
@@ -245,7 +261,7 @@ fn speed_test(path: &Path) -> std::io::Result<Speed> {
 /// Writes and reads a temporary file in the app's data folder, then deletes it.
 #[tauri::command]
 pub(crate) async fn disk_speed(app: AppHandle) -> Result<Speed, String> {
-    let dir: PathBuf = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
+    let dir: PathBuf = crate::paths::data_dir(&app)?;
     tauri::async_runtime::spawn_blocking(move || {
         fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         let path = dir.join(format!("speedtest-{}.tmp", std::process::id()));

@@ -19,10 +19,14 @@ export interface Settings {
   virustotal: boolean;
   virustotalKey: string;
   language: Language;
+  /** Simple hides the technical numbers and screens. Everything still works the same. */
+  level: "simple" | "expert";
+  /** Folders scans skip. They stay listed, with nothing read under them. */
+  excluded: string[];
 }
 
 const KEY = "jard.settings";
-const DEFAULTS: Settings = { theme: "dark", unit: "GB", dedupHardlinks: false, keepResults: true, checkUpdates: null, virustotal: false, virustotalKey: "", language: "ar" };
+const DEFAULTS: Settings = { theme: "dark", unit: "GB", dedupHardlinks: false, keepResults: true, checkUpdates: null, virustotal: false, virustotalKey: "", language: "ar", level: "expert", excluded: [] };
 
 function load(): Settings {
   try {
@@ -65,3 +69,5 @@ export function useSettings(): Settings {
     () => current,
   );
 }
+
+export const currentSettings = (): Settings => current;

@@ -1,0 +1,40 @@
+{
+  "name": "Jard",
+  "nativeName": "جَرد",
+  "tagline": "See where your storage went, and clear it safely, with everything explained in Arabic and English",
+  "theme": "graphite",
+  "chips": [
+    "Windows",
+    "Android",
+    "Works offline"
+  ],
+  "floating": [
+    "30-day quarantine",
+    "No cloud",
+    "Real disk sizes"
+  ],
+  "ticker": [
+    "SCAN EVERY FOLDER",
+    "MOVE TO QUARANTINE, NOT THE BIN",
+    "UNDO FOR 30 DAYS",
+    "PROTECTED SYSTEM PATHS",
+    "NO INTERNET ON ANDROID"
+  ],
+  "letter": "",
+  "colors": {
+    "accent": "#F5B83D"
+  },
+  "mark": {
+    "strokes": [
+      "M4 10 H44",
+      "M4 24 H32",
+      "M4 38 H20"
+    ],
+    "strokeWidth": 7,
+    "dot": {
+      "cx": 31,
+      "cy": 38,
+      "r": 5.5
+    }
+  }
+}

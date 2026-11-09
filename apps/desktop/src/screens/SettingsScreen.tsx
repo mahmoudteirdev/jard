@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { engine } from "../engine";
+import { useEffect, useState } from "react";
+import { engine, type Integration } from "../engine";
+import { middle } from "../format";
 import { href } from "../routes";
 import type { Unit } from "../format";
 import { updateSettings, useSettings, type Theme } from "../settings";
@@ -18,6 +19,21 @@ const UNITS: { id: Unit; name: string; hint: string }[] = [
 export function SettingsScreen() {
   const s = useSettings();
   const [forgot, setForgot] = useState<string | null>(null);
+  const [portable, setPortable] = useState(false);
+  const [integration, setIntegration] = useState<Integration | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  useEffect(() => {
+    engine.isPortable().then(setPortable, () => {});
+    engine.getIntegration().then(setIntegration, () => {});
+  }, []);
+  const change = (work: Promise<void>, next: Integration) => {
+    setProblem(null);
+    work.then(() => setIntegration(next), (e) => setProblem(String(e)));
+  };
+  const addExcluded = async () => {
+    const folder = await engine.pickFolder().catch(() => null);
+    if (folder && !s.excluded.includes(folder)) updateSettings({ excluded: [...s.excluded, folder] });
+  };
   return (
     <>
       <header className="page-head">
@@ -40,6 +56,17 @@ export function SettingsScreen() {
               {l === "ar" ? <span lang="ar">العربية</span> : <span lang="en">English</span>}
             </label>
           ))}
+        </fieldset>
+        <fieldset>
+          <legend>مستوى التفاصيل</legend>
+          <label className="choice">
+            <input type="radio" name="level" checked={s.level === "simple"} onChange={() => updateSettings({ level: "simple" })} />
+            <span>مبتدئ<span className="muted small" style={{ display: "block" }}>نخفي الأرقام التقنية ونعرض النتيجة والإجراء المقترح.</span></span>
+          </label>
+          <label className="choice">
+            <input type="radio" name="level" checked={s.level === "expert"} onChange={() => updateSettings({ level: "expert" })} />
+            <span>خبير<span className="muted small" style={{ display: "block" }}>كل القراءات والمسارات والأكواد ظاهرة.</span></span>
+          </label>
         </fieldset>
         <fieldset>
           <legend>المظهر</legend>
@@ -73,6 +100,42 @@ export function SettingsScreen() {
           </label>
         </fieldset>
         <fieldset>
+          <legend>مجلدات مستثناة من الفحص</legend>
+          {s.excluded.length === 0 && <p className="muted" style={{ padding: "0 10px 6px" }}>ما في مجلدات مستثناة. يسري على الفحص التالي.</p>}
+          {s.excluded.map((f) => (
+            <div key={f} className="line-item quarantine-row">
+              <span className="path small grow" title={f}>{middle(f, 60)}</span>
+              <button type="button" className="btn" onClick={() => updateSettings({ excluded: s.excluded.filter((x) => x !== f) })}>إزالة</button>
+            </div>
+          ))}
+          <div className="actions-row" style={{ padding: "6px 10px" }}>
+            <button type="button" className="btn" onClick={() => void addExcluded()}>إضافة مجلد</button>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>التكامل مع ويندوز</legend>
+          {portable ? (
+            <p className="quiet" style={{ padding: "0 10px 6px" }}>هذه نسخة محمولة: كل بياناتها بجانب البرنامج، ولا تضيف شيئاً إلى ويندوز.</p>
+          ) : integration === null ? (
+            <p className="muted" style={{ padding: "0 10px 6px" }}>هذا الخيار لويندوز فقط.</p>
+          ) : (
+            <>
+              <label className="choice">
+                <input type="checkbox" checked={integration.contextMenu} onChange={(e) => change(engine.setContextMenu(e.target.checked), { ...integration, contextMenu: e.target.checked })} />
+                "افحص بجرد" في قائمة الضغط يمين
+              </label>
+              <label className="choice">
+                <input type="checkbox" checked={integration.startCheck} onChange={(e) => change(engine.setStartCheck(e.target.checked), { ...integration, startCheck: e.target.checked })} />
+                <span>
+                  التشغيل مع ويندوز للتنبيهات
+                  <span className="muted small" style={{ display: "block" }}>عند الدخول نفحص المساحة المتاحة فقط، وننبهك إذا امتلأ قرص بأكثر من 90%. لا نافذة تبقى مفتوحة.</span>
+                </span>
+              </label>
+              {problem && <p className="note error" role="alert"><span>{problem}</span></p>}
+            </>
+          )}
+        </fieldset>
+        <fieldset>
           <legend>الخصوصية</legend>
           <p className="quiet" style={{ padding: "0 10px 6px" }}>يعمل بدون إنترنت، ولا ترسل نتائج الفحص إلى أي جهة.</p>
           <label className="choice">
@@ -85,10 +148,10 @@ export function SettingsScreen() {
             </span>
           </label>
           <label className="choice">
-            <input type="checkbox" checked={s.checkUpdates === true} onChange={(e) => updateSettings({ checkUpdates: e.target.checked })} />
+            <input type="checkbox" disabled={portable} checked={!portable && s.checkUpdates === true} onChange={(e) => updateSettings({ checkUpdates: e.target.checked })} />
             <span>
               البحث عن تحديثات البرنامج
-              <span className="muted small" style={{ display: "block" }}>نقرأ رقم آخر إصدار عند كل تشغيل. لا نرسل بيانات عن جهازك؛ الخادم يرى عنوان IP كأي اتصال.</span>
+              <span className="muted small" style={{ display: "block" }}>{portable ? "النسخة المحمولة لا تحدّث نفسها: نزّل الإصدار الجديد واستبدلها." : "نقرأ رقم آخر إصدار عند كل تشغيل. لا نرسل بيانات عن جهازك؛ الخادم يرى عنوان IP كأي اتصال."}</span>
             </span>
           </label>
           <div className="actions-row" style={{ padding: "6px 10px" }}>

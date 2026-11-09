@@ -16,7 +16,11 @@ const LIBS: { name: string; lic: string; note: string }[] = [
 /** "Is there a new version?" Asked once, on first run. No is the default, closing counts as no. */
 export function UpdatesQuestion() {
   const { checkUpdates } = useSettings();
-  if (checkUpdates !== null || engine.demo) return null;
+  const [portable, setPortable] = useState<boolean | null>(null);
+  useEffect(() => {
+    engine.isPortable().then(setPortable, () => setPortable(false));
+  }, []);
+  if (checkUpdates !== null || engine.demo || portable !== false) return null;
   const answer = (yes: boolean) => updateSettings({ checkUpdates: yes });
   return (
     <div className="backdrop">

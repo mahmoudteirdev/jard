@@ -2,7 +2,7 @@
 // and a counter that tells open screens the scan's numbers changed.
 
 import { useSyncExternalStore } from "react";
-import type { NodeDto, ScanId } from "./engine";
+import { engine, type NodeDto, type QuarantineItem, type ScanId } from "./engine";
 import { go, type RouteId } from "./routes";
 
 export interface CleanRequest {
@@ -44,4 +44,23 @@ export function treeChanged() {
 
 export function useTreeVersion(): number {
   return useSyncExternalStore(subscribe, () => version);
+}
+
+let lastMoved: QuarantineItem[] = [];
+
+export function rememberMoved(items: QuarantineItem[]) {
+  lastMoved = items;
+}
+
+/** Ctrl+Z: puts back the last batch moved. Returns how many went back, of how many. */
+export async function undoLastMove(): Promise<{ back: number; of: number }> {
+  const items = lastMoved;
+  lastMoved = [];
+  let back = 0;
+  for (const item of items) {
+    const r = await engine.restoreItem(item.id, "fail");
+    if (!r.failure) back++;
+  }
+  if (items.length) treeChanged();
+  return { back, of: items.length };
 }

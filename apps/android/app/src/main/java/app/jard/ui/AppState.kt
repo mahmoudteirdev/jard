@@ -9,7 +9,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import app.jard.engine.AppSize
 import app.jard.engine.Device
+import app.jard.engine.DeviceReport
+import app.jard.engine.FileNode
+import app.jard.engine.JardWidget
+import app.jard.engine.Licensing
+import app.jard.engine.ManualTests
+import app.jard.engine.QuarantineItem
 import app.jard.engine.QuarantineStore
+import app.jard.engine.SavedScans
 import app.jard.engine.ScanProgress
 import app.jard.engine.ScanTree
 import app.jard.engine.Scanner
@@ -19,7 +26,22 @@ import kotlin.concurrent.thread
 enum class Tab { Home, Files, Apps, Check, More }
 
 /** Screens over the tabs. */
-enum class Page { None, Permission, Scan, History, Settings, About, Tools }
+enum class Page {
+    None, Onboard, Permission, Scan, Result, History, Settings, About, Clean, Explain,
+    Slow, Device, Battery, Bench, Pixels, Used, Security, Network, Compare, Widgets,
+    Access, Root, Expert, Pro, Key, Guest, ShopLog, ShopReport, ShopSetup, ShopCompare, Test,
+}
+
+/** Where "back" leads. Anything not here goes back to the tabs. */
+private val PARENT = mapOf(
+    Page.Key to Page.Pro,
+    Page.Root to Page.Access,
+    Page.Pixels to Page.Bench,
+    Page.ShopReport to Page.ShopLog,
+    Page.ShopSetup to Page.ShopLog,
+    Page.ShopCompare to Page.ShopLog,
+    Page.Guest to Page.ShopLog,
+)
 
 class AppState(private val context: Context) {
     val store = QuarantineStore(context)
@@ -36,6 +58,89 @@ class AppState(private val context: Context) {
         },
     )
     var simple by mutableStateOf(prefs.getBoolean("simple", false))
+    /** A customer's phone in a shop: nothing is saved, and leaving wipes everything. */
+    var guest by mutableStateOf(prefs.getBoolean("guest", false))
+    var keepResults by mutableStateOf(prefs.getBoolean("keepResults", true))
+    var shopName by mutableStateOf(prefs.getString("shopName", "").orEmpty())
+    var proKey by mutableStateOf<String?>(null)
+    var rootOn by mutableStateOf(prefs.getBoolean("root", false))
+
+    /** What the Explain, Test and ShopReport pages are showing. */
+    var explaining by mutableStateOf<FileNode?>(null)
+    var testing by mutableStateOf("screen")
+    var report by mutableStateOf<DeviceReport?>(null)
+    /** What Result reports on: bytes moved aside, and how many items. */
+    var movedBytes by mutableStateOf(0L)
+    var movedCount by mutableIntStateOf(0)
+    var pendingUndo by mutableStateOf<List<Pair<QuarantineItem, Int>>>(emptyList())
+
+    init {
+        I18n.init(context)
+        thread(name = "jard-load") {
+            proKey = Licensing.activeKey(context)
+            if (keepResults && !guest && tree == null) {
+                SavedScans.load(context)?.let { (t, at) ->
+                    if (tree == null) {
+                        tree = t
+                        finishedAt = at
+                        version++
+                    }
+                }
+            }
+        }
+    }
+
+    val onboarded: Boolean get() = prefs.getBoolean("onboarded", false)
+
+    fun finishOnboarding(simpleMode: Boolean) {
+        prefs.edit().putBoolean("onboarded", true).apply()
+        setSimpleMode(simpleMode)
+    }
+
+    fun goBack() {
+        if (page == Page.Scan) progress.cancelled.set(true)
+        page = PARENT[page] ?: Page.None
+    }
+
+    fun changeKeepResults(value: Boolean) {
+        keepResults = value
+        prefs.edit().putBoolean("keepResults", value).apply()
+        if (!value) thread { SavedScans.forget(context) }
+    }
+
+    fun setShop(name: String) {
+        shopName = name
+        prefs.edit().putString("shopName", name).apply()
+    }
+
+    fun setRoot(on: Boolean) {
+        rootOn = on
+        prefs.edit().putBoolean("root", on).apply()
+    }
+
+    fun enterGuest() {
+        guest = true
+        prefs.edit().putBoolean("guest", true).apply()
+        tree = null
+        ManualTests.reset(context)
+    }
+
+    /** Everything this app holds on this phone goes, and the app closes. */
+    fun leaveGuest() {
+        context.getSystemService(android.app.ActivityManager::class.java).clearApplicationUserData()
+    }
+
+    fun refreshPro() {
+        proKey = Licensing.activeKey(context)
+    }
+
+    /** Saves after a change so the app opens on what's really there. Off the main thread: it can be large. */
+    fun saveLater() {
+        val t = tree ?: return
+        if (!keepResults || guest) return
+        val at = finishedAt
+        thread(name = "jard-save") { runCatching { SavedScans.save(context, t, at) } }
+    }
 
     var tree by mutableStateOf<ScanTree?>(null)
     /** Bumps when the tree or the quarantine changed, so screens read them again. */
@@ -96,6 +201,13 @@ class AppState(private val context: Context) {
             result.onSuccess {
                 tree = it
                 finishedAt = System.currentTimeMillis()
+                if (keepResults && !guest) {
+                    runCatching {
+                        SavedScans.save(context, it, finishedAt)
+                        SavedScans.addSummary(context, it, finishedAt / 1000)
+                    }
+                    JardWidget.refresh(context)
+                }
             }
             result.onFailure { scanError = it.message ?: "تعذّر الفحص." }
             scanning = false

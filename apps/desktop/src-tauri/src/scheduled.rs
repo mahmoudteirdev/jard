@@ -61,7 +61,7 @@ pub(crate) fn rule_targets(tree: &Tree, s: &Schedule, now: u64) -> Vec<Request> 
         .collect()
 }
 
-fn toast(text: &str) {
+pub(crate) fn toast(text: &str) {
     // Only ever called with a fixed sentence and a drive letter checked below.
     let script = format!(
         "[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime]|Out-Null;\

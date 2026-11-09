@@ -322,6 +322,46 @@ export const mockEngine: Engine = {
   async reveal() {
     throw new Error("فتح المستكشف يعمل في التطبيق فقط، لا في وضع العرض");
   },
+  async findSimilarPhotos() {
+    return [];
+  },
+  async truthFacts() {
+    const r = buildTree()[0]!;
+    return {
+      apparent: r.apparent, onDisk: r.onDisk, cloudBytes: r.cloudBytes, cloudFiles: 12, hardlinkBytes: r.dedupBytes, hardlinkFiles: 4,
+      compressedApparent: 0, compressedOnDisk: 0, compressedFiles: 0, sparseApparent: 0, sparseOnDisk: 0, sparseFiles: 0,
+      slackBytes: 0, slackFiles: 0, encryptedFiles: 0, links: 0, denied: 0, partial: false, example: null,
+    };
+  },
+  async volumeFacts() {
+    return { known: false, shadow: [], locked: [] };
+  },
+  async elevatedQuarantine() {
+    return { declined: true, result: null };
+  },
+  async elevatedRestore() {
+    return { declined: true, result: null };
+  },
+  async elevatedDelete() {
+    return { declined: true, result: null };
+  },
+  async isAdmin() {
+    return false;
+  },
+  async relaunchAsAdmin() {
+    return false;
+  },
+  async getIntegration() {
+    return { contextMenu: false, startCheck: false };
+  },
+  async setContextMenu() {},
+  async setStartCheck() {},
+  async isPortable() {
+    return false;
+  },
+  async platformFacts() {
+    return { os: "windows", snapshots: null };
+  },
   async previewClean(scanId, nodeIds) {
     const { nodes } = done(scanId);
     const list = nodeIds.map((i) => nodes[i]!);

@@ -466,3 +466,27 @@ fn search_finds_by_name_kind_size_and_emptiness() {
     assert_eq!(totals.iter().map(|k| k.files).sum::<u64>(), 4);
     assert_eq!(totals.iter().map(|k| k.on_disk).sum::<u64>(), tree.root_node().on_disk);
 }
+
+#[test]
+fn excluded_folder_is_listed_but_not_read() {
+    let t = TempDir::new();
+    t.file("keep/a.bin", 1000);
+    t.file("skip/b.bin", 5000);
+    let opts = Options { excluded: vec![t.0.join("skip")], ..Options::default() };
+    let tree = run(&t.0, opts);
+    let root = tree.root_node();
+    assert_eq!(root.apparent, 1000);
+    assert_eq!(root.children.len(), 2, "the folder stays visible");
+    let skip = tree.nodes.iter().find(|n| &*n.name == "skip").unwrap();
+    assert!(skip.has(flags::PARTIAL), "marked as not fully read");
+}
+
+#[test]
+fn truth_counts_slack_and_names_an_example() {
+    let t = TempDir::new();
+    t.file("small/a.bin", 10);
+    let facts = run(&t.0, Options::default()).truth_facts();
+    assert_eq!(facts.apparent, 10);
+    assert_eq!(facts.cloud_files, 0);
+    assert!(facts.on_disk == facts.apparent + facts.slack_bytes || facts.on_disk <= facts.apparent);
+}

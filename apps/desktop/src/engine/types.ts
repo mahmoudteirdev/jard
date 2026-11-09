@@ -5,6 +5,7 @@ export type NodeId = number;
 export type SortKey = "on_disk" | "apparent" | "name";
 
 export interface ScanOptions {
+  excluded?: string[];
   threads?: number;
   maxDepth?: number;
   dedupHardlinks?: boolean;
@@ -167,6 +168,61 @@ export interface KindTotal {
   kind: FileKind;
   onDisk: number;
   files: number;
+}
+
+export interface TruthFacts {
+  apparent: number;
+  onDisk: number;
+  cloudBytes: number;
+  cloudFiles: number;
+  hardlinkBytes: number;
+  hardlinkFiles: number;
+  compressedApparent: number;
+  compressedOnDisk: number;
+  compressedFiles: number;
+  sparseApparent: number;
+  sparseOnDisk: number;
+  sparseFiles: number;
+  slackBytes: number;
+  slackFiles: number;
+  encryptedFiles: number;
+  links: number;
+  denied: number;
+  partial: boolean;
+  example: number | null;
+}
+
+export interface VolumeFacts {
+  /** False: reading restore points needs administrator rights. */
+  known: boolean;
+  shadow: { root: string | null; used: number }[];
+  locked: string[];
+}
+
+export interface SimilarPhoto {
+  node: NodeDto;
+  path: string;
+  width: number;
+  height: number;
+  distance: number;
+  thumbnail: string;
+}
+
+/** The answer after asking Windows for administrator rights. */
+export interface Elevated<T> {
+  declined: boolean;
+  result: T | null;
+}
+
+export interface PlatformFacts {
+  os: "windows" | "macos" | "linux" | string;
+  /** macOS: local Time Machine snapshots. Null: couldn't read them. */
+  snapshots: number | null;
+}
+
+export interface Integration {
+  contextMenu: boolean;
+  startCheck: boolean;
 }
 
 export interface SearchQuery {
@@ -341,6 +397,21 @@ export interface Engine {
   readLog(limit?: number): Promise<LogEntry[]>;
   cleanupCandidates(scanId: ScanId, kind: CandidateKind, limit?: number): Promise<Candidate[]>;
   findDuplicates(scanId: ScanId, limit?: number): Promise<DuplicateGroup[]>;
+  findSimilarPhotos(scanId: ScanId): Promise<SimilarPhoto[][]>;
+  truthFacts(scanId: ScanId): Promise<TruthFacts>;
+  volumeFacts(): Promise<VolumeFacts>;
+  /** Asks Windows for rights for this one job. */
+  elevatedQuarantine(scanId: ScanId, nodeIds: number[]): Promise<Elevated<NodeOutcome[]>>;
+  elevatedRestore(id: string, keepBoth: boolean): Promise<Elevated<RestoreResult>>;
+  elevatedDelete(id: string): Promise<Elevated<Failure | null>>;
+  isAdmin(): Promise<boolean>;
+  /** Restarts the whole app with rights. Resolves false if the person says no. */
+  relaunchAsAdmin(): Promise<boolean>;
+  getIntegration(): Promise<Integration>;
+  setContextMenu(enabled: boolean): Promise<void>;
+  setStartCheck(enabled: boolean): Promise<void>;
+  isPortable(): Promise<boolean>;
+  platformFacts(): Promise<PlatformFacts>;
   savedScans(): Promise<SavedScan[]>;
   openSaved(key: string): Promise<ScanId>;
   forgetSaved(): Promise<void>;

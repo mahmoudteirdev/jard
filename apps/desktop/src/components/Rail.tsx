@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
 import { href, RAIL_END, RAIL_GROUPS, RAIL_START, type RailItem, type RouteId } from "../routes";
+import { useSettings } from "../settings";
+
+/** The technical screens simple mode leaves out. They still open from the command palette. */
+const EXPERT_ONLY = new Set<RouteId>(["compare", "drives", "tests", "reports"]);
 
 export function Logo({ size = 26 }: { size?: number }) {
   return (
@@ -24,6 +28,7 @@ function Link({ item, current }: { item: RailItem; current: RouteId }) {
 
 /** Side menu. `current` is the Rail item to mark; the Scan screen marks Storage. */
 export function Rail({ current, children }: { current: RouteId; children?: ReactNode }) {
+  const { level } = useSettings();
   return (
     <nav className="rail" aria-label="القائمة الرئيسية">
       <div className="brand">
@@ -37,7 +42,7 @@ export function Rail({ current, children }: { current: RouteId; children?: React
         {RAIL_GROUPS.map((g) => (
           <div className="rail-group" key={g.name} role="group" aria-labelledby={`rail-${g.name}`}>
             <h2 id={`rail-${g.name}`}>{g.name}</h2>
-            {g.items.map((i) => (
+            {g.items.filter((i) => level !== "simple" || !EXPERT_ONLY.has(i.id)).map((i) => (
               <Link key={i.id} item={i} current={current} />
             ))}
           </div>

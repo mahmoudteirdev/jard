@@ -29,7 +29,7 @@ pub struct Drive {
     pub ready: bool,
 }
 
-/// Lists drives. On Windows: every drive letter. Elsewhere: not implemented yet, returns nothing.
+/// Lists drives. On Windows: every drive letter. Elsewhere: every mount point backed by a device.
 pub fn list() -> Vec<Drive> {
     imp::list()
 }
@@ -100,10 +100,68 @@ mod imp {
     }
 }
 
+/// Reads the output of `df -kP`: the one format both Linux and macOS promise.
+#[cfg_attr(windows, allow(dead_code))]
+fn parse_df(text: &str) -> Vec<Drive> {
+    text.lines()
+        .skip(1)
+        .filter_map(|line| {
+            // Filesystem 1024-blocks Used Available Capacity Mounted-on, and the last may hold spaces.
+            let mut parts = line.split_whitespace();
+            let device = parts.next()?;
+            let total: u64 = parts.next()?.parse().ok()?;
+            let _used: u64 = parts.next()?.parse().ok()?;
+            let free: u64 = parts.next()?.parse().ok()?;
+            let _capacity = parts.next()?;
+            let root = parts.collect::<Vec<_>>().join(" ");
+            // tmpfs, devfs and the like are not disks anyone wants to clean.
+            let is_disk = device.starts_with("/dev/") && !device.starts_with("/dev/loop");
+            let network = device.contains(':') || device.starts_with("//");
+            if root.is_empty() || total == 0 || !(is_disk || network) {
+                return None;
+            }
+            let kind = if network {
+                DriveKind::Network
+            } else if root.starts_with("/media") || root.starts_with("/run/media") || root.starts_with("/Volumes") {
+                DriveKind::Removable
+            } else {
+                DriveKind::Fixed
+            };
+            Some(Drive { root, label: String::new(), fs: String::new(), kind, total: total * 1024, free: free * 1024, ready: true })
+        })
+        .collect()
+}
+
 #[cfg(not(windows))]
 mod imp {
     pub fn list() -> Vec<super::Drive> {
-        Vec::new()
+        std::process::Command::new("df")
+            .arg("-kP")
+            .output()
+            .map(|o| super::parse_df(&String::from_utf8_lossy(&o.stdout)))
+            .unwrap_or_default()
+    }
+}
+
+#[cfg(test)]
+mod df_tests {
+    use super::*;
+
+    #[test]
+    fn reads_df_and_skips_what_is_not_a_disk() {
+        let text = "Filesystem 1024-blocks Used Available Capacity Mounted on\n\
+            /dev/nvme0n1p2 1000 400 600 40% /\n\
+            tmpfs 500 0 500 0% /run\n\
+            /dev/loop3 100 100 0 100% /snap/core/1\n\
+            /dev/sdb1 2000 0 2000 0% /media/me/My Disk\n\
+            nas:/share 3000 0 3000 0% /mnt/nas\n";
+        let d = parse_df(text);
+        let roots: Vec<_> = d.iter().map(|x| x.root.as_str()).collect();
+        assert_eq!(roots, ["/", "/media/me/My Disk", "/mnt/nas"]);
+        assert_eq!(d[0].kind, DriveKind::Fixed);
+        assert_eq!(d[0].free, 600 * 1024);
+        assert_eq!(d[1].kind, DriveKind::Removable);
+        assert_eq!(d[2].kind, DriveKind::Network);
     }
 }
 

@@ -38,7 +38,7 @@ fn now() -> u64 {
 }
 
 /// What to move. Sizes come from the scan, so nothing has to be re-measured.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Request {
     pub path: PathBuf,
     pub is_dir: bool,
@@ -63,7 +63,7 @@ pub struct Item {
 }
 
 /// Why something could not be moved, restored or deleted.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Failure {
     Protected {
@@ -101,7 +101,7 @@ impl From<io::Error> for Failure {
 }
 
 /// Result for one path in a batch.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Outcome {
     pub path: String,

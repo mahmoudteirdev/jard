@@ -6,12 +6,12 @@ use std::path::{Path, PathBuf};
 
 use jard_license::{check_key, device_code, verify, KeyCheck, License, LicenseError};
 use serde::Serialize;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle};
 
 const PUBLIC_KEY: &str = include_str!("../license_public.hex");
 
 fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    app.path().app_local_data_dir().map_err(|e| e.to_string())
+    crate::paths::data_dir(app)
 }
 
 /// Windows' per-install ID. Only its hash ever leaves this function.

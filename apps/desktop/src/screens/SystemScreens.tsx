@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { engine, type Disk, type Driver, type Hardware, type OpenPort, type Program, type SystemError } from "../engine";
 import { ago, num, percent, size } from "../format";
+import { RunAsAdmin } from "./PlatformPanels";
 import { FlashCard, Leftovers, MemoryCard, NetworkCard, PrintableReport, ScheduleCard, SecureDeleteCard, StartupList, StressCard, VirusTotalCard } from "./MoreScreens";
 import { href } from "../routes";
 import type { Session } from "../scan-session";
@@ -170,6 +171,7 @@ export function HealthScreen({ session, drives }: { session: Session | null; dri
   return (
     <>
       <Head title="صحة الجهاز" note="هذي قراءات النظام كما هي، بدون درجة مخترعة. بعض بيانات الأقراص تحتاج تشغيل البرنامج كمسؤول." />
+      <RunAsAdmin />
       <section className="card" aria-labelledby="findings">
         <h2 id="findings" className="card-title">يحتاج انتباهك</h2>
         {disks.loading ? <p className="muted card-body">يقرأ…</p> : sick.length + low.length === 0 ? (

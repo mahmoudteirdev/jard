@@ -1,6 +1,7 @@
 // The one scan the app shows at a time: its progress while running, its tree once done.
 
 import { useSyncExternalStore } from "react";
+import { currentSettings } from "./settings";
 import { engine, type Done, type Drive, type Progress, type SavedScan, type ScanId, type Unlisten } from "./engine";
 
 export interface Session {
@@ -54,7 +55,7 @@ export async function startScan(root: string, drive: Drive | null, dedupHardlink
   unlisten.forEach((u) => u());
   unlisten = [];
 
-  const id = await engine.startScan(root, { dedupHardlinks }, keep);
+  const id = await engine.startScan(root, { dedupHardlinks, excluded: currentSettings().excluded }, keep);
   set({ id, root, drive, dedup: dedupHardlinks, phase: "running", progress: null, done: null, startedAt: Date.now(), finishedAt: null });
   // Freed only now: the old results stay on screen, and readable, until the new session replaces them.
   if (previous) void engine.forgetScan(previous.id).catch(() => {});

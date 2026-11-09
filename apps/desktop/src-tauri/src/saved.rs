@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use jard_scan::{display_path, kind_totals, Kind, KindTotal, Query, Tree};
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, State};
 
 use crate::{dto, read, NodeDto, Scan, Scans};
 use jard_clean::Store;
@@ -26,7 +26,7 @@ fn now() -> u64 {
 }
 
 fn base(app: &AppHandle) -> Result<PathBuf, String> {
-    app.path().app_local_data_dir().map_err(|e| e.to_string()).map(|d| d.join("scans"))
+    crate::paths::data_dir(app).map(|d| d.join("scans"))
 }
 
 /// A stable file name for a scanned folder.

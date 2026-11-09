@@ -10,6 +10,7 @@ use jard_scan::{flags, NodeId, Tree};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};
 
+use crate::elevate::{run_job, Job, JobResult, Refused};
 use crate::{dto, read, NodeDto, Scans, SharedTree};
 
 /// Which scan node each quarantined item came from, so a restore updates the numbers on screen.
@@ -92,7 +93,11 @@ pub(crate) async fn quarantine_nodes(
     })
     .await
     .map_err(|e| e.to_string())?;
+    Ok(record_moves(&app, &moved, shared, results))
+}
 
+/// Takes what moved out of the tree, and remembers where it was for a restore.
+fn record_moves(app: &AppHandle, moved: &Moved, shared: SharedTree, results: Vec<(NodeId, Outcome)>) -> Vec<NodeOutcome> {
     let out = {
         let mut tree = shared.write().unwrap_or_else(|e| e.into_inner());
         let mut map = moved.0.lock().unwrap_or_else(|e| e.into_inner());
@@ -107,8 +112,150 @@ pub(crate) async fn quarantine_nodes(
             })
             .collect::<Vec<_>>()
     };
-    crate::saved::resave(&app, shared);
-    Ok(out)
+    crate::saved::resave(app, shared);
+    out
+}
+
+/// What came back from asking Windows for administrator rights. `declined`: the person said no.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct Elevated<T> {
+    declined: bool,
+    result: Option<T>,
+}
+
+async fn elevated_job(app: &AppHandle, job: Job) -> Result<Option<JobResult>, String> {
+    let app = app.clone();
+    match tauri::async_runtime::spawn_blocking(move || run_job(&app, &job)).await.map_err(|e| e.to_string())? {
+        Ok(r) => Ok(Some(r)),
+        Err(Refused::Declined) => Ok(None),
+        Err(Refused::Failed(e)) => Err(e),
+    }
+}
+
+/// The same move as `quarantine_nodes`, for the nodes Windows refused, with rights for this one job.
+#[tauri::command]
+pub(crate) async fn elevated_quarantine(
+    app: AppHandle,
+    scans: State<'_, Scans>,
+    moved: State<'_, Moved>,
+    scan_id: u32,
+    node_ids: Vec<NodeId>,
+) -> Result<Elevated<Vec<NodeOutcome>>, String> {
+    let shared = scans.tree(scan_id)?;
+    let (ids, reqs): (Vec<NodeId>, Vec<Request>) = requests(&read(&shared), &node_ids).into_iter().unzip();
+    match elevated_job(&app, Job::Quarantine(reqs)).await? {
+        Some(JobResult::Quarantine(outcomes)) => {
+            let results = ids.into_iter().zip(outcomes).collect();
+            Ok(Elevated { declined: false, result: Some(record_moves(&app, &moved, shared, results)) })
+        }
+        Some(_) => Err("unexpected answer".into()),
+        None => Ok(Elevated { declined: true, result: None }),
+    }
+}
+
+/// A restore that needs rights: something moved with rights usually has to go back with them.
+#[tauri::command]
+pub(crate) async fn elevated_restore(
+    app: AppHandle,
+    moved: State<'_, Moved>,
+    id: String,
+    keep_both: bool,
+) -> Result<Elevated<RestoreDto>, String> {
+    match elevated_job(&app, Job::Restore { id: id.clone(), keep_both }).await? {
+        Some(JobResult::Restore(Ok(path))) => {
+            if let Some((tree, node)) = moved.0.lock().unwrap_or_else(|e| e.into_inner()).remove(&id) {
+                tree.write().unwrap_or_else(|e| e.into_inner()).reattach(node);
+                crate::saved::resave(&app, tree);
+            }
+            Ok(Elevated { declined: false, result: Some(RestoreDto { path: Some(path), failure: None }) })
+        }
+        Some(JobResult::Restore(Err(f))) => Ok(Elevated { declined: false, result: Some(RestoreDto { path: None, failure: Some(f) }) }),
+        Some(_) => Err("unexpected answer".into()),
+        None => Ok(Elevated { declined: true, result: None }),
+    }
+}
+
+#[tauri::command]
+pub(crate) async fn elevated_delete(app: AppHandle, moved: State<'_, Moved>, id: String) -> Result<Elevated<Option<Failure>>, String> {
+    match elevated_job(&app, Job::Delete { id: id.clone() }).await? {
+        Some(JobResult::Delete(f)) => {
+            if f.is_none() {
+                moved.0.lock().unwrap_or_else(|e| e.into_inner()).remove(&id);
+            }
+            Ok(Elevated { declined: false, result: Some(f) })
+        }
+        Some(_) => Err("unexpected answer".into()),
+        None => Ok(Elevated { declined: true, result: None }),
+    }
+}
+
+/// Every reason these numbers can differ from Explorer's, counted from this scan.
+#[tauri::command]
+pub(crate) fn truth_facts(scans: State<'_, Scans>, scan_id: u32) -> Result<jard_scan::TruthFacts, String> {
+    Ok(read(&scans.tree(scan_id)?).truth_facts())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SimilarDto {
+    node: NodeDto,
+    path: String,
+    width: u32,
+    height: u32,
+    distance: u32,
+    /// A `data:` URL. The window may show nothing from disk, on purpose.
+    thumbnail: String,
+}
+
+const BASE64: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+fn base64(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let n = (chunk[0] as u32) << 16 | (*chunk.get(1).unwrap_or(&0) as u32) << 8 | *chunk.get(2).unwrap_or(&0) as u32;
+        out.push(BASE64[(n >> 18) as usize & 63] as char);
+        out.push(BASE64[(n >> 12) as usize & 63] as char);
+        out.push(if chunk.len() > 1 { BASE64[(n >> 6) as usize & 63] as char } else { '=' });
+        out.push(if chunk.len() > 2 { BASE64[n as usize & 63] as char } else { '=' });
+    }
+    out
+}
+
+/// Groups photos of the same shot. Reads the photos, so it runs only when asked.
+#[tauri::command]
+pub(crate) async fn find_similar_photos(
+    scans: State<'_, Scans>,
+    store: State<'_, Arc<Store>>,
+    scan_id: u32,
+) -> Result<Vec<Vec<SimilarDto>>, String> {
+    let shared = scans.tree(scan_id)?;
+    let store = Arc::clone(&store);
+    tauri::async_runtime::spawn_blocking(move || {
+        let tree = read(&shared);
+        let stop = AtomicBool::new(false);
+        jard_scan::find_similar(&tree, &stop)
+            .into_iter()
+            .take(200)
+            .map(|g| {
+                g.photos
+                    .into_iter()
+                    .filter_map(|p| {
+                        Some(SimilarDto {
+                            node: dto(&tree, &store, tree.get(p.id)?),
+                            path: tree.display_path(p.id)?,
+                            width: p.width,
+                            height: p.height,
+                            distance: p.distance,
+                            thumbnail: if p.thumbnail.is_empty() { String::new() } else { format!("data:image/jpeg;base64,{}", base64(&p.thumbnail)) },
+                        })
+                    })
+                    .collect()
+            })
+            .collect()
+    })
+    .await
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

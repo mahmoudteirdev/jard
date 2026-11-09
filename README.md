@@ -1,0 +1,126 @@
+<p align="center">
+  <img src="docs/readme/header.svg" alt="Jard (جَرد): see where your storage went and clear it safely" width="100%" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Windows-tested-5B8DEF?style=flat-square" alt="Windows: tested" />
+  <img src="https://img.shields.io/badge/Android-tested-4FCBA0?style=flat-square" alt="Android: tested" />
+  <img src="https://img.shields.io/badge/macOS%20%26%20Linux-not%20yet%20run-8A958E?style=flat-square" alt="macOS and Linux: not yet run" />
+  <img src="https://img.shields.io/badge/languages-Arabic%20%7C%20English-F5B83D?style=flat-square" alt="Languages: Arabic and English" />
+</p>
+
+<div dir="rtl">
+
+**جَرد** بيفحص قرصك أو هاتفك وبيوريك وين راحت المساحة، وبيشرح كل رقم بكلام واضح. اللي بتختاره ما بينحذف فوراً: بينتقل لحجر مؤقت 30 يوماً وبتقدر ترجّعه. التطبيق عربي أولاً، وفيه واجهة إنجليزية كاملة.
+
+</div>
+
+## About
+
+```yaml
+name: Jard (جَرد)
+what: A disk analyzer and cleaner for Windows and Android
+languages: [Arabic (right-to-left, first), English]
+promises:
+  - Nothing is deleted straight away: it moves to a 30-day quarantine, with undo
+  - Protected system paths are refused, whatever is asked
+  - Three numbers per folder: apparent size, size on disk, and what isn't counted
+  - No invented "health scores": readings as the system reports them
+  - Android has no internet permission, so it can't send anything anywhere
+status: In development, no public release yet
+```
+
+## Screens
+
+<p align="center">
+  <img src="docs/readme/desktop-truth.png" alt="Desktop: why the numbers differ from Windows" width="100%" />
+</p>
+<p align="center">
+  <img src="docs/readme/android-simple.png" alt="Android beginner home, in Arabic" width="30%" />
+  <img src="docs/readme/android-english.png" alt="Android storage home, in English" width="30%" />
+  <img src="docs/readme/android-light.png" alt="Android device check, in the light theme" width="30%" />
+</p>
+
+## What it does
+
+**Windows**
+
+- Fast scan of any drive or folder, with a treemap and a paged folder list
+- Cleanup suggestions: large, old and temporary files, exact duplicates, similar photos, and program leftovers
+- A dry run before anything moves, and administrator rights asked for one operation at a time
+- Search, scan comparison, and a screen explaining why the numbers differ from File Explorer
+- Disk health, startup programs, open ports, speed and stress tests, CSV and PDF reports
+- Scheduled scans, a command palette (`Ctrl+K`), keyboard control, and a portable version
+- Signed updates, only if you say yes, with no network before that
+
+**Android**
+
+- Beginner and expert modes, with a plain "what is this?" for files and folders
+- Files by size and age, duplicates, app sizes, and the same 30-day quarantine
+- Why the phone is slow, battery, speed test, dead-pixel check, and hands-on hardware tests
+- Permissions audit, known trackers inside apps, and data use per app
+- A used-phone report as text or PDF, a guest mode that wipes itself, and a device log for shops
+- Widgets, alerts when nearly full, and a weekly scan
+- Optional Shizuku or root access for what Android keeps closed
+
+## Tools
+
+<p>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/rust/rust-original.svg" alt="Rust" width="44" />&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tauri/tauri-original.svg" alt="Tauri" width="44" />&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg" alt="React" width="44" />&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" alt="TypeScript" width="44" />&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vitejs/vitejs-original.svg" alt="Vite" width="44" />&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/pnpm/pnpm-original.svg" alt="pnpm" width="44" />&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/kotlin/kotlin-original.svg" alt="Kotlin" width="44" />&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jetpackcompose/jetpackcompose-original.svg" alt="Jetpack Compose" width="44" />&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/android/android-original.svg" alt="Android" width="44" />
+</p>
+
+| Folder | What's in it |
+|---|---|
+| `crates/jard-scan` | The scan engine: flat size tree, duplicates, similar photos, saved results |
+| `crates/jard-clean` | The quarantine and the protected-path rules |
+| `crates/jard-license` | Offline activation: signed, device-bound files |
+| `apps/desktop` | The desktop app: Tauri, React and TypeScript |
+| `apps/android` | The Android app: Kotlin and Compose, sharing only design tokens with the desktop |
+| `design` | The developer handoff and the design tokens |
+
+## Build it
+
+You need Rust, Node with pnpm, and for Android, Android Studio.
+
+```bash
+# Tests for the engines and the desktop shell
+cargo test --workspace
+
+# Desktop installer. The result is in target/release/bundle
+cd apps/desktop
+pnpm install
+pnpm tauri build
+
+# Desktop portable zip
+pnpm build:portable
+
+# Android debug APK. On Windows, run this from Git Bash
+cd ../android
+./gradlew :app:testDebugUnitTest :app:assembleDebug
+```
+
+Building the signed installer needs your own updater key, and activation files need your own license key. Neither is in this repository.
+
+## Status
+
+| Area | State |
+|---|---|
+| Windows | Built and tested |
+| Android | Core tested on a Galaxy S9 (Android 10), every screen on an Android 15 emulator |
+| Root and Shizuku | Built, not yet tested with the access really granted |
+| macOS and Linux | Code and settings exist, not yet built or run |
+| Not built yet | Quick scan through the NTFS table, the 7-day charging chart, a tablet layout |
+
+The full spec and the decisions behind it are in [`design/HANDOFF.md`](design/HANDOFF.md), in Arabic.
+
+## License
+
+All rights reserved. The code is public to read, and no license is granted to use, copy or distribute it. The IBM Plex fonts are under the SIL Open Font License, and the Shizuku API library is under Apache 2.0.

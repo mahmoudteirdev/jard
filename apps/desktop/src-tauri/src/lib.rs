@@ -4,6 +4,9 @@
 //! File operations take node ids, not paths, so the UI can only act on what a scan found.
 
 mod about;
+mod elevate;
+mod integration;
+mod paths;
 mod clean;
 mod saved;
 mod scheduled;
@@ -305,6 +308,9 @@ fn reveal(scans: State<'_, Scans>, scan_id: ScanId, node_id: NodeId) -> Result<(
     tauri_plugin_opener::reveal_item_in_dir(&path).map_err(|e| e.to_string())
 }
 
+pub use elevate::{run_elevated, wait_for_exit};
+pub use integration::{startup_check, uninstall_clean};
+
 pub fn run_scheduled(folder: &str) -> i32 {
     scheduled::run(folder)
 }
@@ -325,13 +331,19 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(Scans::default())
-        .manage(StartupFolder(Mutex::new(std::env::args().nth(1))))
+        .manage(StartupFolder(Mutex::new(std::env::args().nth(1).filter(|a| !a.starts_with("--")))))
         .manage(clean::Moved::default())
         .manage(Arc::new(tools::Busy::default()))
         .setup(|app| {
             about::install_crash_log(app.handle());
-            let dir = app.path().app_local_data_dir()?;
-            let store = Arc::new(Store::open(dir)?);
+            let dir = paths::data_dir(app.handle())?;
+            let store = Arc::new(Store::open(&dir)?);
+            let window = app.config().app.windows.iter().find(|w| w.label == "main").cloned().ok_or("no main window in the config")?;
+            let mut builder = tauri::WebviewWindowBuilder::from_config(app.handle(), &window)?;
+            if paths::portable_dir().is_some() {
+                builder = builder.data_directory(dir.join("webview"));
+            }
+            builder.build()?;
             let purge = Arc::clone(&store);
             // Items past their 30 days go at startup, without holding up the window.
             std::thread::Builder::new().name("jard-purge".into()).spawn(move || {
@@ -361,6 +373,19 @@ pub fn run() {
             clean::read_log,
             clean::cleanup_candidates,
             clean::find_duplicates,
+            clean::find_similar_photos,
+            clean::truth_facts,
+            clean::elevated_quarantine,
+            clean::elevated_restore,
+            clean::elevated_delete,
+            elevate::is_admin,
+            elevate::relaunch_as_admin,
+            integration::get_integration,
+            integration::set_context_menu,
+            integration::set_start_check,
+            paths::is_portable,
+            paths::platform_facts,
+            system::volume_facts,
             saved::saved_scans,
             saved::open_saved,
             saved::forget_saved,
