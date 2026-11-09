@@ -76,7 +76,7 @@ object JardData {
 }
 
 object JardSpace { val s1 = 2.dp; val s2 = 6.dp; val s3 = 10.dp; val s4 = 16.dp; val s5 = 24.dp; val touchMin = 44.dp }
-object JardRow { val simple = 44.dp; val twoLine = 48.dp; val withBar = 56.dp }
+object JardRow { val simple = 48.dp; val twoLine = 56.dp; val withBar = 64.dp }
 val JardShape = RectangleShape  // radius 0 في كل مكان
 
 val JardText: FontFamily = FontFamily(
@@ -91,13 +91,13 @@ val JardMono: FontFamily = FontFamily(
 )
 
 object JardType {
-    val display = TextStyle(fontFamily = JardText, fontSize = 36.sp, fontWeight = FontWeight.Bold)
-    val title = TextStyle(fontFamily = JardText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-    val heading = TextStyle(fontFamily = JardText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-    val body = TextStyle(fontFamily = JardText, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 21.sp)
-    val caption = TextStyle(fontFamily = JardText, fontSize = 13.sp)
-    val label = TextStyle(fontFamily = JardText, fontSize = 12.sp, fontWeight = FontWeight.Medium) // الحد الأدنى: لا نص أصغر من 12
-    val number = TextStyle(fontFamily = JardMono, fontSize = 14.sp)
+    val display = TextStyle(fontFamily = JardText, fontSize = 38.sp, fontWeight = FontWeight.Bold)
+    val title = TextStyle(fontFamily = JardText, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+    val heading = TextStyle(fontFamily = JardText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+    val body = TextStyle(fontFamily = JardText, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp)
+    val caption = TextStyle(fontFamily = JardText, fontSize = 15.sp, fontWeight = FontWeight.Medium, lineHeight = 22.sp)
+    val label = TextStyle(fontFamily = JardText, fontSize = 14.sp, fontWeight = FontWeight.SemiBold) // الحد الأدنى: لا نص أصغر من 14
+    val number = TextStyle(fontFamily = JardMono, fontSize = 16.sp, fontWeight = FontWeight.Medium)
 }
 
 val LocalJardColors = staticCompositionLocalOf { DarkColors }

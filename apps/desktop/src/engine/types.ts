@@ -43,6 +43,7 @@ export interface Progress {
   current: string;
   done: boolean;
   cancelled: boolean;
+  paused: boolean;
 }
 
 /** scan://done/{scanId} */
@@ -51,6 +52,8 @@ export interface Done {
   elapsedMs: number;
   partial: boolean;
   error: string | null;
+  /** The folder is gone: its drive was unplugged or it was moved during the scan. */
+  rootGone?: boolean;
 }
 
 export interface Status {
@@ -405,8 +408,13 @@ export interface Engine {
   elevatedRestore(id: string, keepBoth: boolean): Promise<Elevated<RestoreResult>>;
   elevatedDelete(id: string): Promise<Elevated<Failure | null>>;
   isAdmin(): Promise<boolean>;
-  /** Restarts the whole app with rights. Resolves false if the person says no. */
-  relaunchAsAdmin(): Promise<boolean>;
+  /** Restarts the whole app with rights, optionally scanning a folder. Resolves false if the person says no. */
+  relaunchAsAdmin(folder?: string): Promise<boolean>;
+  pauseScan(scanId: ScanId, paused: boolean): Promise<void>;
+  deniedFolders(scanId: ScanId, limit?: number): Promise<Candidate[]>;
+  thirdPartyNotices(): Promise<string>;
+  /** Opens the issues page in the person's browser. */
+  openIssues(): Promise<void>;
   getIntegration(): Promise<Integration>;
   setContextMenu(enabled: boolean): Promise<void>;
   setStartCheck(enabled: boolean): Promise<void>;

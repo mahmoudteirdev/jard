@@ -89,7 +89,7 @@ export function Treemap(props: {
         const w = r.w - GAP;
         const h = r.h - GAP;
         if (w < 2 || h < 2) return null;
-        const label = w > 64 && h > 34;
+        const label = w > 72 && h > 64; // room for the name and size at their full size
         const text = `${item.name}، ${size(item.value, props.unit)}`;
         return (
           <button

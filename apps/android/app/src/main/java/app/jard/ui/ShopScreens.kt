@@ -63,7 +63,7 @@ fun ManualTestsList(s: AppState) {
     val states = remember(s.version, s.page) { ManualTests.ALL.map { (id, name) -> Triple(id, name, ManualTests.state(context, id)) } }
     val done = states.count { it.third != TestState.NotRun }
     Row(verticalAlignment = Alignment.CenterVertically) {
-        T("اختبارات يدوية", Modifier.weight(1f), weight = FontWeight.SemiBold)
+        T("اختبارات يدوية", Modifier.weight(1f), weight = FontWeight.Bold)
         Num("$done / ${states.size}")
     }
     for ((id, name, state) in states) {
@@ -74,7 +74,7 @@ fun ManualTestsList(s: AppState) {
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            T(name, Modifier.weight(1f), weight = FontWeight.Medium)
+            T(name, Modifier.weight(1f), weight = FontWeight.SemiBold)
             when (state) {
                 TestState.Passed -> T("سليم", color = Jard.colors.statusGood)
                 TestState.Failed -> T("فشل", color = Jard.colors.statusSerious)
@@ -328,7 +328,7 @@ fun UsedScreen(s: AppState) {
     Page {
         Head(s, "تقرير حالة الهاتف", "${report.title} · ${Reports.dateText(report.date)}")
         GuestBanner(s)
-        T("الخلاصة: ${I18n.tr(report.summary)}", weight = FontWeight.SemiBold)
+        T("الخلاصة: ${I18n.tr(report.summary)}", weight = FontWeight.Bold)
         T("الفحص لا يكشف كل الأعطال، فجرّب الهاتف بنفسك قبل الشراء.", color = Jard.colors.inkQuiet)
         ReportRows(report.rows)
         if (report.rows.any { it.tag == RowTag.NotChecked }) {
@@ -355,7 +355,7 @@ fun GuestScreen(s: AppState) {
         Card {
             for (x in listOf("بلا حساب وبلا تسجيل دخول", "ما منفتح صورك ولا رسائلك", "كل شي بينمسح لما تضغط خروج")) T("• $x")
         }
-        T("اللي رح ينفحص", weight = FontWeight.SemiBold)
+        T("اللي رح ينفحص", weight = FontWeight.Bold)
         Card {
             for (x in listOf("المساحة والملفات الكبيرة", "البطارية والحساسات", "الشاشة واللمس والسماعة", "هل الجهاز مرووت أو معدّل")) T("• $x")
         }
@@ -405,7 +405,7 @@ fun ShopLogScreen(s: AppState) {
 private fun EntryRow(e: ShopEntry, onClick: () -> Unit) {
     Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onClick).padding(vertical = 6.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            T(e.name, Modifier.weight(1f), weight = FontWeight.Medium)
+            T(e.name, Modifier.weight(1f), weight = FontWeight.SemiBold)
             TagWord(if (e.warnings == 0) RowTag.Good else RowTag.Warn)
         }
         Muted("${Reports.dateText(e.at)} · ${I18n.tr(e.note)}")
@@ -421,7 +421,7 @@ fun ShopReportScreen(s: AppState) {
     }
     Page {
         Head(s, s.shopName.ifBlank { "تقرير حالة الهاتف" }, "${report.title} · ${Reports.dateText(report.date)}")
-        T(report.summary, weight = FontWeight.SemiBold)
+        T(report.summary, weight = FontWeight.Bold)
         ReportRows(report.rows)
         Muted("ما في رقم IMEI ولا صور ولا حسابات في التقرير. الفحص لا يكشف كل عطل، فجرّب الجهاز بنفسك.")
         ReportActions(report, s.shopName.ifBlank { null })
@@ -449,7 +449,7 @@ fun ShopCompareScreen(s: AppState) {
             for (e in entries) {
                 CheckRow(e.id in picked, { on -> if (on) picked.add(e.id) else picked.remove(e.id) }, e.name) {
                     Column(Modifier.weight(1f)) {
-                        T(e.name, weight = FontWeight.Medium)
+                        T(e.name, weight = FontWeight.SemiBold)
                         Muted(Reports.dateText(e.at))
                     }
                 }
@@ -459,8 +459,8 @@ fun ShopCompareScreen(s: AppState) {
             val b = entries.first { it.id == picked[1] }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.weight(1f))
-                T(a.name, Modifier.weight(1f), weight = FontWeight.SemiBold)
-                T(b.name, Modifier.weight(1f), weight = FontWeight.SemiBold)
+                T(a.name, Modifier.weight(1f), weight = FontWeight.Bold)
+                T(b.name, Modifier.weight(1f), weight = FontWeight.Bold)
             }
             for (key in (a.report.rows + b.report.rows).map { it.key }.distinct()) {
                 val ra = a.report.rows.firstOrNull { it.key == key }

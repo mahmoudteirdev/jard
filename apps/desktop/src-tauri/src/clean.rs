@@ -190,6 +190,25 @@ pub(crate) async fn elevated_delete(app: AppHandle, moved: State<'_, Moved>, id:
     }
 }
 
+/// The folders Windows refused to list in this scan, so the person can see what isn't counted.
+#[tauri::command]
+pub(crate) fn denied_folders(
+    scans: State<'_, Scans>,
+    store: State<'_, Arc<Store>>,
+    scan_id: u32,
+    limit: Option<usize>,
+) -> Result<Vec<Candidate>, String> {
+    let shared = scans.tree(scan_id)?;
+    let tree = read(&shared);
+    Ok(tree
+        .nodes
+        .iter()
+        .filter(|n| n.is_dir && n.flags & flags::DENIED != 0 && tree.is_attached(n))
+        .take(limit.unwrap_or(200))
+        .filter_map(|n| Some(Candidate { node: dto(&tree, &store, n), path: tree.display_path(n.id)?, note: "denied".into() }))
+        .collect())
+}
+
 /// Every reason these numbers can differ from Explorer's, counted from this scan.
 #[tauri::command]
 pub(crate) fn truth_facts(scans: State<'_, Scans>, scan_id: u32) -> Result<jard_scan::TruthFacts, String> {

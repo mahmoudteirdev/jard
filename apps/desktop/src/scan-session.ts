@@ -16,6 +16,9 @@ export interface Session {
   done: Done | null;
   startedAt: number;
   finishedAt: number | null;
+  /** When the current pause began, and how long earlier pauses took: elapsed time doesn't count them. */
+  pausedAt: number | null;
+  pausedMs: number;
 }
 
 let session: Session | null = null;
@@ -45,7 +48,7 @@ export async function openSaved(saved: SavedScan, drive: Drive | null): Promise<
   set({
     id, root: saved.root, drive, dedup: false, phase: "done", progress: null,
     done: { rootId: 0, elapsedMs: 0, partial: saved.partial, error: null },
-    startedAt: saved.savedAt * 1000, finishedAt: saved.savedAt * 1000,
+    startedAt: saved.savedAt * 1000, finishedAt: saved.savedAt * 1000, pausedAt: null, pausedMs: 0,
   });
   if (previous) void engine.forgetScan(previous.id).catch(() => {});
 }
@@ -56,7 +59,7 @@ export async function startScan(root: string, drive: Drive | null, dedupHardlink
   unlisten = [];
 
   const id = await engine.startScan(root, { dedupHardlinks, excluded: currentSettings().excluded }, keep);
-  set({ id, root, drive, dedup: dedupHardlinks, phase: "running", progress: null, done: null, startedAt: Date.now(), finishedAt: null });
+  set({ id, root, drive, dedup: dedupHardlinks, phase: "running", progress: null, done: null, startedAt: Date.now(), finishedAt: null, pausedAt: null, pausedMs: 0 });
   // Freed only now: the old results stay on screen, and readable, until the new session replaces them.
   if (previous) void engine.forgetScan(previous.id).catch(() => {});
   unlisten = await Promise.all([
@@ -71,6 +74,15 @@ export async function startScan(root: string, drive: Drive | null, dedupHardlink
 
 export async function cancelScan(): Promise<void> {
   if (session?.phase === "running") await engine.cancelScan(session.id);
+}
+
+export async function setScanPaused(paused: boolean): Promise<void> {
+  if (session?.phase !== "running") return;
+  const s = session;
+  await engine.pauseScan(s.id, paused);
+  const now = Date.now();
+  if (paused && s.pausedAt === null) patch(s.id, { pausedAt: now });
+  else if (!paused && s.pausedAt !== null) patch(s.id, { pausedAt: null, pausedMs: s.pausedMs + now - s.pausedAt });
 }
 
 export function useSession(): Session | null {

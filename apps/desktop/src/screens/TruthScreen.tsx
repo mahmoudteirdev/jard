@@ -151,7 +151,7 @@ export function TruthScreen({ session }: { session: Session | null }) {
   if (scanId === null || !session) {
     return (
       <div className="empty">
-        <h1 style={{ fontSize: 24 }}>ليش الأرقام تختلف عن ويندوز؟</h1>
+        <h1 style={{ fontSize: 26 }}>ليش الأرقام تختلف عن ويندوز؟</h1>
         <p className="quiet">نشرح الفرق من نتيجة فحصك أنت، فلازم فحص أولاً.</p>
         <div className="actions"><a className="btn btn-primary" href={href("storage")}>افتح التخزين</a></div>
       </div>

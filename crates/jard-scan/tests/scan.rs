@@ -490,3 +490,34 @@ fn truth_counts_slack_and_names_an_example() {
     assert_eq!(facts.cloud_files, 0);
     assert!(facts.on_disk == facts.apparent + facts.slack_bytes || facts.on_disk <= facts.apparent);
 }
+
+#[test]
+fn a_paused_scan_reads_nothing_until_resumed() {
+    let t = TempDir::new();
+    t.file("a/one.bin", 100);
+    t.file("b/two.bin", 200);
+    let progress = std::sync::Arc::new(Progress::new());
+    progress.set_paused(true);
+    let (root, p) = (t.0.clone(), std::sync::Arc::clone(&progress));
+    let scan = std::thread::spawn(move || scan(&root, &Options::default(), &p).unwrap());
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    let held = progress.snapshot();
+    assert!(!held.done && held.paused);
+    assert_eq!(held.dirs, 0, "nothing listed while paused");
+    progress.set_paused(false);
+    let tree = scan.join().unwrap();
+    assert_eq!(tree.root_node().apparent, 300);
+}
+
+#[test]
+fn cancelling_a_paused_scan_ends_it() {
+    let t = TempDir::new();
+    t.file("a/one.bin", 100);
+    let progress = std::sync::Arc::new(Progress::new());
+    progress.set_paused(true);
+    let (root, p) = (t.0.clone(), std::sync::Arc::clone(&progress));
+    let scan = std::thread::spawn(move || scan(&root, &Options::default(), &p).unwrap());
+    std::thread::sleep(std::time::Duration::from_millis(150));
+    progress.cancel();
+    assert!(scan.join().unwrap().cancelled);
+}

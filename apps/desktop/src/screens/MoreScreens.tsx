@@ -61,8 +61,8 @@ export function WhySlowScreen({ drives }: { drives: Drive[] }) {
   return (
     <>
       <header style={{ maxWidth: 760 }}>
-        <h1 style={{ fontSize: 36, lineHeight: 1.2, fontWeight: 700 }}>ليش جهازك بطيء؟</h1>
-        <p className="quiet" style={{ marginTop: 8, fontSize: 17 }}>رتبنا الأسباب اللي قدرنا نقيسها، من الأكثر تأثيراً غالباً، وأنت تقرر شو تغيّر.</p>
+        <h1 style={{ fontSize: 38, lineHeight: 1.2, fontWeight: 700 }}>ليش جهازك بطيء؟</h1>
+        <p className="quiet" style={{ marginTop: 8, fontSize: 19 }}>رتبنا الأسباب اللي قدرنا نقيسها، من الأكثر تأثيراً غالباً، وأنت تقرر شو تغيّر.</p>
       </header>
       {loading && <p className="muted" role="status">يقيس…</p>}
       {!loading && causes.length === 0 && <p className="quiet">ما لقينا سبب واضح من القراءات الحالية. جرّب تفتح هذه الشاشة لما يكون الجهاز بطيئاً فعلاً.</p>}
@@ -70,7 +70,7 @@ export function WhySlowScreen({ drives }: { drives: Drive[] }) {
         {causes.map((c) => (
           <article key={c.title} className="card action-row" style={{ padding: 16 }}>
             <div style={{ flex: "1 1 420px", minWidth: 0 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 600 }}>{c.title}</h2>
+              <h2 style={{ fontSize: 19, fontWeight: 700 }}>{c.title}</h2>
               <p className="quiet">{c.plain}</p>
             </div>
             <div style={{ flex: "0 0 150px" }}><div className="label muted">القياس</div><div className="num">{c.metric}</div></div>
@@ -114,7 +114,7 @@ export function Leftovers({ session, programs }: { session: Session | null; prog
                 <tr key={c.node.id}>
                   <td><label className="pick"><span className="sr-only">تحديد {c.node.name}</span>
                     <input type="checkbox" checked={checked.has(c.node.id)} onChange={() => setChecked((m) => { const x = new Map(m); if (x.has(c.node.id)) x.delete(c.node.id); else x.set(c.node.id, c.node); return x; })} /></label></td>
-                  <td><div className="name" style={{ fontWeight: 500 }}>{c.node.name}</div><div className="path label muted" title={c.path}>{middle(c.path, 80)}</div></td>
+                  <td><div className="name" style={{ fontWeight: 600 }}>{c.node.name}</div><div className="path label muted" title={c.path}>{middle(c.path, 80)}</div></td>
                   <td className="end"><span className="num">{size(c.node.onDisk, unit)}</span></td>
                 </tr>
               ))}
@@ -150,7 +150,7 @@ export function StartupList() {
         <label key={`${s.name}-${i}`} className="choice line-item" style={{ cursor: s.canToggle ? "pointer" : "default" }}>
           <input type="checkbox" checked={!s.disabled} disabled={!s.canToggle} onChange={() => toggle(s)} />
           <span className="grow">
-            <span className="name" style={{ display: "block", fontWeight: 500 }}>{s.name}</span>
+            <span className="name" style={{ display: "block", fontWeight: 600 }}>{s.name}</span>
             <span className="muted small">{s.canToggle ? (s.disabled ? "متوقف عند الإقلاع" : "يعمل عند الإقلاع") : s.where === "folder" ? "من مجلد بدء التشغيل: غيّره من مدير المهام" : "لكل المستخدمين: غيّره من مدير المهام"}</span>
           </span>
         </label>
@@ -179,7 +179,7 @@ export function PartitionsCard() {
           const list = parts!.filter((p) => p.disk === disk);
           return (
             <div key={disk} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <strong style={{ fontWeight: 600 }}>القرص <span className="num">{disk}</span></strong>
+              <strong style={{ fontWeight: 700 }}>القرص <span className="num">{disk}</span></strong>
               <div className="usage"><div className="bar" role="img" aria-label={list.map((p) => `${p.letter || p.kind} ${size(p.size, unit)}`).join("، ")}>
                 {list.map((p, i) => <div key={p.number} style={{ flex: `${Math.max(p.size, 1e9)} 1 0px`, background: NAMES[i % NAMES.length] }} />)}
               </div></div>
@@ -214,7 +214,7 @@ export function StressCard() {
   };
   return (
     <article className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <h2 style={{ fontSize: 16, fontWeight: 600 }}>اختبار ضغط المعالج</h2>
+      <h2 style={{ fontSize: 18, fontWeight: 700 }}>اختبار ضغط المعالج</h2>
       <p className="muted">يشغّل كل الأنوية بأقصى طاقة. ما بنقدر نقرأ حرارة كل المعالجات، فراقب الجهاز بنفسك وأوقفه إذا سخن كتير.</p>
       <label className="field"><span className="muted small">المدة</span>
         <select className="input" value={seconds} disabled={busy} onChange={(e) => setSeconds(Number(e.target.value))}>
@@ -232,7 +232,7 @@ export function MemoryCard() {
   const [error, setError] = useState<string | null>(null);
   return (
     <article className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <h2 style={{ fontSize: 16, fontWeight: 600 }}>فحص الذاكرة</h2>
+      <h2 style={{ fontSize: 18, fontWeight: 700 }}>فحص الذاكرة</h2>
       <p className="muted">يفتح أداة ويندوز، وهي تسألك إذا بدك تعيد التشغيل الآن أو لاحقاً. احفظ شغلك أولاً.</p>
       {error && <p className="note error" role="alert"><span>{error}</span></p>}
       <button type="button" className="btn" onClick={() => void engine.openMemoryTest().catch((e) => setError(String(e)))}>فتح أداة ويندوز</button>
@@ -263,7 +263,7 @@ export function FlashCard({ drives }: { drives: Drive[] }) {
   };
   return (
     <article className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <h2 style={{ fontSize: 16, fontWeight: 600 }}>السعة الحقيقية للفلاشة</h2>
+      <h2 style={{ fontSize: 18, fontWeight: 700 }}>السعة الحقيقية للفلاشة</h2>
       <p className="muted">يملأ المساحة الفارغة ببيانات اختبار، يتحقق منها، ثم يحذفها. الفلاشة المغشوشة ممكن تخرب ملفاتها أثناء الاختبار، فخذ نسخة منها أولاً. قد يأخذ ساعات.</p>
       {usb.length === 0 ? <p className="quiet small">ما في فلاشة موصولة الآن.</p> : (
         <>
@@ -497,7 +497,7 @@ export function ScheduleCard({ session }: { session: Session | null }) {
           <label className="field"><span className="muted small">الوقت</span><input type="time" dir="ltr" className="input" value={form.time} onChange={(e) => up({ time: e.target.value })} /></label>
         </div>
         <label className="choice"><input type="checkbox" checked={form.notifyFull} onChange={(e) => up({ notifyFull: e.target.checked })} />نبهني عند امتلاء القرص 90%</label>
-        <h3 style={{ fontSize: 14, fontWeight: 600 }}>عند كل فحص مجدول</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 700 }}>عند كل فحص مجدول</h3>
         <label className="choice"><input type="checkbox" checked={form.ruleTemp} onChange={(e) => up({ ruleTemp: e.target.checked })} />انقل الملفات المؤقتة للحجر</label>
         <label className="choice"><input type="checkbox" checked={form.ruleBrowserCache} onChange={(e) => up({ ruleBrowserCache: e.target.checked })} />انقل كاش المتصفح للحجر</label>
         <label className="choice"><input type="checkbox" checked={form.ruleOldDownloads} onChange={(e) => up({ ruleOldDownloads: e.target.checked })} />انقل تنزيلات أقدم من 6 أشهر للحجر</label>

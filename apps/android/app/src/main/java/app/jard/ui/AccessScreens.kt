@@ -67,7 +67,7 @@ fun AccessScreen(s: AppState, resumed: Int) {
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    T(t.name, Modifier.weight(1f), weight = FontWeight.SemiBold)
+                    T(t.name, Modifier.weight(1f), weight = FontWeight.Bold)
                     T(t.tag, style = JardType.label, color = Jard.colors.inkMuted)
                 }
                 Muted(t.what)
@@ -85,7 +85,7 @@ fun AccessScreen(s: AppState, resumed: Int) {
         when (open) {
             "normal" -> T("شغّال الآن.", color = Jard.colors.statusGood)
             "shizuku" -> {
-                T("إعداد Shizuku", weight = FontWeight.SemiBold)
+                T("إعداد Shizuku", weight = FontWeight.Bold)
                 when {
                     granted -> {
                         T("Shizuku مربوط. صار بنقدر نقرأ Android/data ونمسح الكاش.", color = Jard.colors.statusGood)
@@ -171,11 +171,11 @@ fun RootScreen(s: AppState) {
                 }
             }
         }
-        T("حدود الاستخدام", weight = FontWeight.SemiBold)
+        T("حدود الاستخدام", weight = FontWeight.Bold)
         T("قراءة فقط بشكل افتراضي. كل حذف بصلاحية الروت يحتاج تأكيداً منفصلاً. كل أمر ينفذ يُسجّل وتقدر تراجعه.", color = Jard.colors.inkQuiet)
         when (state) {
             "granted" -> {
-                T("الصلاحية مفعّلة", color = Jard.colors.statusGood, weight = FontWeight.SemiBold)
+                T("الصلاحية مفعّلة", color = Jard.colors.statusGood, weight = FontWeight.Bold)
                 Num("$ du -k -d 1 /data/data (read-only)", size = 12, color = Jard.colors.inkMuted)
                 PrivilegedFolders("/data/data")
                 Btn("إيقاف الصلاحية", { s.setRoot(false); state = "idle" }, Modifier.fillMaxWidth())
@@ -274,11 +274,11 @@ fun ProScreen(s: AppState) {
         }
         val key = s.proKey
         if (key != null) {
-            T("تم التفعيل. نفس الجهاز، بدون أي اتصال.", color = Jard.colors.statusGood, weight = FontWeight.SemiBold)
+            T("تم التفعيل. نفس الجهاز، بدون أي اتصال.", color = Jard.colors.statusGood, weight = FontWeight.Bold)
             Num(key)
             Btn("إلغاء التفعيل على هذا الجهاز", { Licensing.deactivate(context); s.refreshPro() }, Modifier.fillMaxWidth())
         } else {
-            T("دفعة واحدة، بدون اشتراك شهري.", weight = FontWeight.Medium)
+            T("دفعة واحدة، بدون اشتراك شهري.", weight = FontWeight.SemiBold)
             Btn("التفعيل بدون إنترنت", { s.page = Page.Key }, Modifier.fillMaxWidth(), BtnKind.Primary)
         }
         Muted("بدون إعلانات، وبدون تتبّع، وبدون قفل نتائج فحص سابق. إذا انتهت التجربة، يرجع التطبيق للمجاني ولا يتوقف.")
@@ -327,7 +327,7 @@ fun KeyScreen(s: AppState) {
     }
     Page {
         Head(s, "تفعيل بدون إنترنت", "لما الشراء من المتجر ما بيزبط من بلدك.")
-        T("1. انسخ رمز جهازك", weight = FontWeight.SemiBold)
+        T("1. انسخ رمز جهازك", weight = FontWeight.Bold)
         Card {
             Muted("للقراءة فقط")
             Num(code, size = 16)
@@ -336,12 +336,12 @@ fun KeyScreen(s: AppState) {
                 copied = true
             }, Modifier.fillMaxWidth())
         }
-        T("2. ابعته وخذ ملف التفعيل", weight = FontWeight.SemiBold)
+        T("2. ابعته وخذ ملف التفعيل", weight = FontWeight.Bold)
         Btn("افتح واتساب برسالة جاهزة", {
             shareText(context, I18n.tr("بدي أفعّل جَرد Pro.") + "\n$code\n${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}", whatsapp = true)
         }, Modifier.fillMaxWidth())
         Muted("الرسالة فيها الرمز والطراز فقط.")
-        T("3. افتح الملف أو الصق نصه", weight = FontWeight.SemiBold)
+        T("3. افتح الملف أو الصق نصه", weight = FontWeight.Bold)
         Btn("فتح ملف التفعيل", { pick.launch(arrayOf("*/*")) }, Modifier.fillMaxWidth())
         Field(text, { text = it }, "ملف التفعيل أو المفتاح", error = error, mono = true, minLines = 2)
         Btn("تفعيل", { apply(text) }, Modifier.fillMaxWidth(), BtnKind.Primary, enabled = text.isNotBlank())

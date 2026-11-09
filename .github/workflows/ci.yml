@@ -1,0 +1,95 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.2.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install dependencies
+        working-directory: apps/desktop
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck, translations and web build
+        working-directory: apps/desktop
+        run: |
+          pnpm build
+          node --experimental-strip-types scripts/i18n-extract.mjs | tee i18n.txt
+          grep -q 'missing: 0' i18n.txt
+
+      - name: Tests
+        run: cargo test --workspace
+
+      - name: Lint
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Build the installer and portable copy
+        working-directory: apps/desktop
+        run: |
+          pnpm tauri build
+          node scripts/portable.mjs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Jard-Windows
+          retention-days: 14
+          path: |
+            target/release/bundle/nsis/*-setup.exe
+            target/release/bundle/portable/*.zip
+
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Every string has its English
+        run: node scripts/i18n.mjs | tee i18n.txt && grep -q 'missing: 0' i18n.txt
+
+      - name: Tests and debug APK
+        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug --console=plain
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Jard-Android-debug
+          retention-days: 14
+          path: apps/android/app/build/outputs/apk/debug/*.apk

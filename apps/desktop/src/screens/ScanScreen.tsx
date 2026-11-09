@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { clock, num, size } from "../format";
 import { go } from "../routes";
-import { cancelScan, type Session } from "../scan-session";
+import { cancelScan, setScanPaused, type Session } from "../scan-session";
 import { useSettings } from "../settings";
 
 /** Live scan progress (Scan board). Goes to Storage by itself when the scan ends. */
@@ -26,11 +26,19 @@ export function ScanScreen({ session }: { session: Session | null }) {
   const pct = drive && used > 0 && p ? Math.min(99, Math.floor((p.bytes / used) * 100)) : null;
   const where = drive ? `القرص ${drive.root.replace(/\\$/, "")}` : session.root;
 
+  const paused = session.pausedAt !== null;
+  // Only what this scan really does. Duplicates and comparing run when asked for, not here.
+  const reading = p?.done ? "اكتملت" : paused ? "متوقفة مؤقتاً" : "جارية";
+  const steps = [
+    { name: "قراءة الملفات والمجلدات", state: reading },
+    { name: "حساب الأحجام وحفظ النتيجة", state: p?.done ? "جارية" : "بالانتظار" },
+  ];
+
   const stats = [
     { label: "ملفات فُحصت", value: num(p?.files ?? 0) },
     { label: "مجلدات", value: num(p?.dirs ?? 0) },
     { label: "حجم فُحص (على القرص)", value: size(p?.bytes ?? 0, unit) },
-    { label: "الوقت المنقضي", value: clock(now - session.startedAt) },
+    { label: "الوقت المنقضي", value: clock((session.pausedAt ?? now) - session.startedAt - session.pausedMs) },
     { label: "تعذّرت قراءته", value: num(p?.denied ?? 0) },
   ];
 
@@ -38,11 +46,14 @@ export function ScanScreen({ session }: { session: Session | null }) {
     <>
       <header className="page-head">
         <div className="title">
-          <h1>{stopping ? "يتوقف الفحص…" : "جارٍ الفحص"}</h1>
+          <h1>{stopping ? "يتوقف الفحص…" : paused ? "الفحص متوقف مؤقتاً" : "جارٍ الفحص"}</h1>
           <p className="muted">
             <span className={drive ? "" : "num"}>{where}</span> · يمكنك متابعة عملك أثناء الفحص
           </p>
         </div>
+        <button type="button" className="btn" disabled={stopping} onClick={() => void setScanPaused(!paused)}>
+          {paused ? "استئناف" : "إيقاف مؤقت"}
+        </button>
         <button
           type="button"
           className="btn"
@@ -81,6 +92,14 @@ export function ScanScreen({ session }: { session: Session | null }) {
           <div key={s.label} className="card">
             <div className="muted small">{s.label}</div>
             <span className="num">{s.value}</span>
+          </div>
+        ))}
+      </section>
+      <section className="card" aria-label="خطوات الفحص">
+        {steps.map((s) => (
+          <div key={s.name} className="line-item quarantine-row">
+            <span className="grow">{s.name}</span>
+            <span className={s.state === "بالانتظار" ? "muted small" : "small"}>{s.state}</span>
           </div>
         ))}
       </section>

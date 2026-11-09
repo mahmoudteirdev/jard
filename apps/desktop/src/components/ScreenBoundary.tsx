@@ -21,7 +21,7 @@ export class ScreenBoundary extends Component<{ children: ReactNode }, State> {
     if (!error) return this.props.children;
     return (
       <div className="note error" role="alert" style={{ display: "block" }}>
-        <p style={{ margin: 0, fontWeight: 600 }}>تعطلت هذه الشاشة.</p>
+        <p style={{ margin: 0, fontWeight: 700 }}>تعطلت هذه الشاشة.</p>
         <p className="muted" style={{ margin: "6px 0 10px" }}>
           ملفاتك ما تأثرت، وباقي الشاشات شغالة. إذا تكرر هذا، انسخ التشخيص من «حول جَرد» وأرسله لنا.
         </p>

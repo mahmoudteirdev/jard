@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/mahmoudteirdev/jard/actions/workflows/ci.yml"><img src="https://github.com/mahmoudteirdev/jard/actions/workflows/ci.yml/badge.svg" alt="Build status" /></a>
   <img src="https://img.shields.io/badge/Windows-tested-5B8DEF?style=flat-square" alt="Windows: tested" />
   <img src="https://img.shields.io/badge/Android-tested-4FCBA0?style=flat-square" alt="Android: tested" />
   <img src="https://img.shields.io/badge/macOS%20%26%20Linux-not%20yet%20run-8A958E?style=flat-square" alt="macOS and Linux: not yet run" />
@@ -107,7 +108,7 @@ cd ../android
 ./gradlew :app:testDebugUnitTest :app:assembleDebug
 ```
 
-Building the signed installer needs your own updater key, and activation files need your own license key. Neither is in this repository.
+Every push to `main` builds both apps on GitHub, and a version tag publishes a release. See [`docs/RELEASING.md`](docs/RELEASING.md). Building a signed release needs your own keys, and activation files need your own license key. None of them are in this repository.
 
 ## Status
 
@@ -123,4 +124,4 @@ The full spec and the decisions behind it are in [`design/HANDOFF.md`](design/HA
 
 ## License
 
-All rights reserved. The code is public to read, and no license is granted to use, copy or distribute it. The IBM Plex fonts are under the SIL Open Font License, and the Shizuku API library is under Apache 2.0.
+All rights reserved. The code is public to read, and no license is granted to use, copy or distribute it. The IBM Plex fonts are under the SIL Open Font License, and the Shizuku API library is under MIT. The full list and texts are on the About screen. See also the [privacy policy](docs/PRIVACY.md).

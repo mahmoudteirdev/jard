@@ -27,7 +27,7 @@ enum class Tab { Home, Files, Apps, Check, More }
 
 /** Screens over the tabs. */
 enum class Page {
-    None, Onboard, Permission, Scan, Result, History, Settings, About, Clean, Explain,
+    None, Onboard, Permission, Scan, ScanLost, Result, History, Settings, About, Clean, Explain,
     Slow, Device, Battery, Bench, Pixels, Used, Security, Network, Compare, Widgets,
     Access, Root, Expert, Pro, Key, Guest, ShopLog, ShopReport, ShopSetup, ShopCompare, Test,
 }
@@ -73,22 +73,6 @@ class AppState(private val context: Context) {
     var movedBytes by mutableStateOf(0L)
     var movedCount by mutableIntStateOf(0)
     var pendingUndo by mutableStateOf<List<Pair<QuarantineItem, Int>>>(emptyList())
-
-    init {
-        I18n.init(context)
-        thread(name = "jard-load") {
-            proKey = Licensing.activeKey(context)
-            if (keepResults && !guest && tree == null) {
-                SavedScans.load(context)?.let { (t, at) ->
-                    if (tree == null) {
-                        tree = t
-                        finishedAt = at
-                        version++
-                    }
-                }
-            }
-        }
-    }
 
     val onboarded: Boolean get() = prefs.getBoolean("onboarded", false)
 
@@ -149,10 +133,35 @@ class AppState(private val context: Context) {
     var progress by mutableStateOf(ScanProgress())
     var scanError by mutableStateOf<String?>(null)
     var finishedAt by mutableStateOf(0L)
+    /** How the last scan ended when the permission went: how far it got, and whether anything was kept. */
+    var lostFiles by mutableStateOf(0L)
+    var lostPercent by mutableStateOf(0)
+    /** The system closed the app during a scan, so nothing from it survived. */
+    var scanInterrupted by mutableStateOf(prefs.getBoolean("scanRunning", false))
 
     var picked by mutableStateOf(loadPicked())
     var storage by mutableStateOf(Device.storage(context))
     var apps by mutableStateOf<List<AppSize>?>(null)
+
+    init {
+        I18n.init(context)
+        if (scanInterrupted) {
+            prefs.edit().remove("scanRunning").apply()
+            page = Page.ScanLost
+        }
+        thread(name = "jard-load") {
+            proKey = Licensing.activeKey(context)
+            if (keepResults && !guest && tree == null) {
+                SavedScans.load(context)?.let { (t, at) ->
+                    if (tree == null) {
+                        tree = t
+                        finishedAt = at
+                        version++
+                    }
+                }
+            }
+        }
+    }
 
     private fun loadPicked(): List<Uri> =
         prefs.getStringSet("picked", emptySet()).orEmpty().map(Uri::parse).sortedBy { it.toString() }
@@ -191,11 +200,13 @@ class AppState(private val context: Context) {
         progress = p
         scanning = true
         scanError = null
+        scanInterrupted = false
+        prefs.edit().putBoolean("scanRunning", true).apply()
         page = Page.Scan
         storage = Device.storage(context)
         thread(name = "jard-scan") {
             val result = runCatching {
-                if (Device.hasAllFiles(context)) Scanner.scanFiles(Environment.getExternalStorageDirectory(), p)
+                if (Device.hasAllFiles(context)) Scanner.scanFiles(Environment.getExternalStorageDirectory(), p) { Device.hasAllFiles(context) }
                 else Scanner.scanPicked(context, picked, p)
             }
             result.onSuccess {
@@ -210,6 +221,11 @@ class AppState(private val context: Context) {
                 }
             }
             result.onFailure { scanError = it.message ?: "تعذّر الفحص." }
+            prefs.edit().remove("scanRunning").apply()
+            if (p.permissionLost.get()) {
+                lostFiles = p.files.get()
+                lostPercent = (p.bytes.get() * 100 / storage.used.coerceAtLeast(1)).coerceAtMost(99).toInt()
+            }
             scanning = false
             version++
         }

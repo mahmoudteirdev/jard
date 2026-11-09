@@ -120,6 +120,7 @@ private fun Root(s: AppState, resumed: Int) {
                 Page.Onboard -> OnboardScreen(s, resumed)
                 Page.Permission -> PermissionScreen(s, resumed)
                 Page.Scan -> ScanScreen(s)
+                Page.ScanLost -> ScanLostScreen(s, resumed)
                 Page.Result -> ResultScreen(s)
                 Page.History -> HistoryScreen(s)
                 Page.Settings -> SettingsScreen(s)
@@ -172,7 +173,7 @@ private fun Root(s: AppState, resumed: Int) {
                         verticalArrangement = Arrangement.Center,
                     ) {
                         PathIcon(d, color)
-                        T(name, style = JardType.label, color = color, weight = if (on) FontWeight.SemiBold else FontWeight.Normal)
+                        T(name, style = JardType.label, color = color, weight = if (on) FontWeight.Bold else FontWeight.Medium)
                     }
                 }
             }

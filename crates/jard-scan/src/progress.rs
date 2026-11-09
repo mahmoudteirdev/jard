@@ -16,6 +16,7 @@ pub struct Progress {
     denied: AtomicU64,
     done: AtomicBool,
     cancelled: AtomicBool,
+    paused: AtomicBool,
     current: Mutex<String>,
 }
 
@@ -32,6 +33,7 @@ pub struct Snapshot {
     pub current: String,
     pub done: bool,
     pub cancelled: bool,
+    pub paused: bool,
 }
 
 impl Progress {
@@ -48,12 +50,22 @@ impl Progress {
             current: self.current.lock().map(|c| c.clone()).unwrap_or_default(),
             done: self.done.load(Relaxed),
             cancelled: self.cancelled.load(Relaxed),
+            paused: self.paused.load(Relaxed),
         }
     }
 
     /// Ask the scan to stop. What was read so far stays browsable, marked `PARTIAL`.
     pub fn cancel(&self) {
         self.cancelled.store(true, Relaxed);
+    }
+
+    /// Holds the scan after the folders being read now. Cancelling still works while paused.
+    pub fn set_paused(&self, paused: bool) {
+        self.paused.store(paused, Relaxed);
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.paused.load(Relaxed)
     }
 
     pub fn is_cancelled(&self) -> bool {

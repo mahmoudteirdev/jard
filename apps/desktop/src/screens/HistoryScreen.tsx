@@ -58,7 +58,7 @@ function ItemRow({ item, onChange, setNotice }: {
   return (
     <div className="line-item quarantine-row">
       <span className="grow">
-        <span className="name" style={{ display: "block", fontWeight: 500 }}>{name}</span>
+        <span className="name" style={{ display: "block", fontWeight: 600 }}>{name}</span>
         <span className="path label muted" title={item.original} style={{ display: "block" }}>{middle(item.original, 70)}</span>
       </span>
       <span className="num">{size(item.onDisk, unit)}</span>

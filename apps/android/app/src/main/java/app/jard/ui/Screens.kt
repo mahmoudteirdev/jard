@@ -106,7 +106,7 @@ fun HomeScreen(s: AppState, resumed: Int) {
                 Box(Modifier.fillMaxWidth(0.7f).height(5.dp).background(JardData.d2))
                 Box(Modifier.fillMaxWidth(0.4f).height(5.dp).background(JardData.d3))
             }
-            T("جَرد", Modifier.weight(1f), JardType.title.copy(fontSize = 20.sp))
+            T("جَرد", Modifier.weight(1f), JardType.title.copy(fontSize = 22.sp))
             Btn(
                 when {
                     s.rootOn -> "روت"
@@ -119,7 +119,7 @@ fun HomeScreen(s: AppState, resumed: Int) {
         GuestBanner(s)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f)) {
-                T("المساحة المستخدمة", color = Jard.colors.inkMuted, weight = FontWeight.Medium)
+                T("المساحة المستخدمة", color = Jard.colors.inkMuted, weight = FontWeight.SemiBold)
                 Num(sizeText(used), size = 30)
                 Num("/ ${sizeText(s.storage.total)}", color = Jard.colors.inkMuted)
             }
@@ -142,14 +142,14 @@ fun HomeScreen(s: AppState, resumed: Int) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Box(Modifier.width(72.dp).height((16 + (40f * size / used.coerceAtLeast(1))).dp).background(color))
-                T(name, Modifier.weight(1f), weight = FontWeight.Medium)
+                T(name, Modifier.weight(1f), weight = FontWeight.SemiBold)
                 Num(sizeText(size))
             }
         }
         if (layers.isNotEmpty()) {
             Row(Modifier.fillMaxWidth().heightIn(min = JardRow.simple), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(Modifier.width(72.dp).height(20.dp).border(BorderStroke(1.dp, Jard.colors.lineStrong)))
-                T("متاح", Modifier.weight(1f), weight = FontWeight.Medium)
+                T("متاح", Modifier.weight(1f), weight = FontWeight.SemiBold)
                 Num(sizeText(s.storage.free))
             }
         }
@@ -172,7 +172,7 @@ fun PermissionScreen(s: AppState, resumed: Int) {
         T("لنحسب حجم كل مجلد، لازم نقرأ أسماء وأحجام الملفات. لا نفتح محتوى أي ملف، ولا نرسل شيئاً للإنترنت.", color = Jard.colors.inkQuiet)
         for ((k, v) in listOf("نقرأ" to "أسماء الملفات وأحجامها وتواريخها فقط.", "ما نقرأ" to "محتوى الصور والرسائل والمستندات، إلا لو طلبت كشف المكررات.", "ما نرسل" to "ولا بايت. التطبيق ما عنده صلاحية إنترنت أصلاً.")) {
             Card {
-                T(k, weight = FontWeight.SemiBold)
+                T(k, weight = FontWeight.Bold)
                 Muted(v)
             }
         }
@@ -183,7 +183,7 @@ fun PermissionScreen(s: AppState, resumed: Int) {
                 ask.launch(Device.LEGACY_STORAGE)
             }
         }, Modifier.fillMaxWidth(), BtnKind.Primary, minHeight = 52.dp)
-        T("أو اختر مجلدات محددة", weight = FontWeight.SemiBold)
+        T("أو اختر مجلدات محددة", weight = FontWeight.Bold)
         Muted("الخطة البديلة إذا ما بدك تعطي الصلاحية الكاملة. الفحص يصير جزئياً، وبنقول هذا بوضوح.")
         for (uri in s.picked) {
             Row(Modifier.fillMaxWidth().background(Jard.colors.surfaceRaised).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -207,7 +207,7 @@ fun ScanScreen(s: AppState) {
             delay(200)
             tick++
         }
-        if (!s.scanning) s.page = Page.None
+        if (!s.scanning) s.page = if (s.progress.permissionLost.get()) Page.ScanLost else Page.None
     }
     val p = s.progress
     @Suppress("UNUSED_VARIABLE") val redraw = tick
@@ -324,7 +324,7 @@ fun FilesScreen(s: AppState) {
                         .border(BorderStroke(1.dp, if (on) Jard.colors.accent else Jard.colors.line))
                         .clickable(role = Role.RadioButton) { mode = id },
                     contentAlignment = Alignment.Center,
-                ) { T(name, weight = if (on) FontWeight.SemiBold else FontWeight.Normal) }
+                ) { T(name, weight = if (on) FontWeight.Bold else FontWeight.Medium) }
             }
         }
         if (mode == "dupes" && dupes == null) {
@@ -373,7 +373,7 @@ fun FilesScreen(s: AppState) {
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            T(n.name + if (n.isDir) "/" else "", Modifier.weight(1f), weight = FontWeight.Medium)
+                            T(n.name + if (n.isDir) "/" else "", Modifier.weight(1f), weight = FontWeight.SemiBold)
                             if (n.partial) T("جزئي", style = JardType.label, color = Jard.colors.statusWarn)
                             if (n.denied) T("تعذّرت القراءة", style = JardType.label, color = Jard.colors.statusWarn)
                             if (n.isLink) T("اختصار", style = JardType.label, color = Jard.colors.inkMuted)
@@ -395,7 +395,7 @@ fun FilesScreen(s: AppState) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Column(Modifier.weight(1f)) {
-                    T("تم تحديد ${checked.size}", weight = FontWeight.SemiBold)
+                    T("تم تحديد ${checked.size}", weight = FontWeight.Bold)
                     Num(sizeText(checked.values.sumOf { it.onDisk }))
                 }
                 Btn("مشاركة", { shareNodes(context, checked.values.toList()) })
@@ -451,7 +451,7 @@ fun AppsScreen(s: AppState, resumed: Int) {
                         verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
                     ) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            T(a.name, Modifier.weight(1f), weight = FontWeight.Medium)
+                            T(a.name, Modifier.weight(1f), weight = FontWeight.SemiBold)
                             Num(sizeText(a.total))
                         }
                         Row(Modifier.fillMaxWidth((a.total.toFloat() / max).coerceIn(0.01f, 1f)).height(5.dp), horizontalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -498,7 +498,7 @@ fun CheckScreen(s: AppState) {
         Title("فحص الجهاز")
         Muted("${info.model} · Android ${info.android}")
         GuestBanner(s)
-        T("قراءة تلقائية", weight = FontWeight.SemiBold)
+        T("قراءة تلقائية", weight = FontWeight.Bold)
         Card {
             FactRow("صحة البطارية", listOfNotNull(I18n.tr(battery.healthWord), battery.cycles?.let { "$it cycles" }).joinToString(" · "))
             FactRow("الذاكرة العشوائية", "${sizeText(info.ramTotal - info.ramFree)} / ${sizeText(info.ramTotal)}")
@@ -507,7 +507,7 @@ fun CheckScreen(s: AppState) {
             FactRow("عمر وحدة التخزين", if (s.rootOn) "—" else "يحتاج روت")
         }
         Card {
-            T("الأمان", weight = FontWeight.SemiBold)
+            T("الأمان", weight = FontWeight.Bold)
             T(if (info.screenLock) "قفل الشاشة مفعّل." else "ما في قفل شاشة: أي حدا بيقدر يفتح جهازك.", color = if (info.screenLock) Jard.colors.statusGood else Jard.colors.statusSerious)
             T(if (info.devOptions) "خيارات المطور مفعّلة. إذا ما بتستخدمها، أوقفها." else "خيارات المطور مغلقة.", color = if (info.devOptions) Jard.colors.statusWarn else Jard.colors.statusGood)
         }
@@ -546,11 +546,11 @@ fun HistoryScreen(s: AppState) {
     Page {
         Head(s, "السجل والحجر")
         message?.let { Note(it, Jard.colors.statusSerious, "حسناً") { message = null } }
-        T("الحجر المؤقت · ${ltr(sizeText(items.sumOf { it.onDisk }))}", weight = FontWeight.SemiBold)
+        T("الحجر المؤقت · ${ltr(sizeText(items.sumOf { it.onDisk }))}", weight = FontWeight.Bold)
         if (items.isEmpty()) Muted("الحجر فارغ. اللي تنقله من الملفات بيضل هون 30 يوماً وتقدر تسترجعه.")
         for (i in items) {
             Card {
-                T(i.name, weight = FontWeight.Medium)
+                T(i.name, weight = FontWeight.SemiBold)
                 Num(sizeText(i.onDisk))
                 Muted("يُحذف بعد ${i.daysLeft()} يوماً")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -572,7 +572,7 @@ fun HistoryScreen(s: AppState) {
                 if (i.id in confirming) Muted("ما بنقدر نسترجعه بعدها.")
             }
         }
-        T("آخر العمليات", weight = FontWeight.SemiBold)
+        T("آخر العمليات", weight = FontWeight.Bold)
         if (log.isEmpty()) Muted("ما في عمليات بعد.")
         for ((at, what, bytes) in log) {
             Column {
@@ -593,16 +593,16 @@ fun SettingsScreen(s: AppState) {
     var chores by remember { mutableStateOf(0) }
     Page {
         Head(s, "الإعدادات")
-        T("اللغة", weight = FontWeight.SemiBold)
+        T("اللغة", weight = FontWeight.Bold)
         Tabs(listOf("ar" to "العربية", "en" to "English"), if (I18n.english) "en" else "ar") { I18n.setLanguage(context, it == "en") }
-        T("مستوى التفاصيل", weight = FontWeight.SemiBold)
+        T("مستوى التفاصيل", weight = FontWeight.Bold)
         Tabs(listOf("simple" to "مبتدئ", "expert" to "خبير"), if (s.simple) "simple" else "expert") { s.setSimpleMode(it == "simple") }
         Muted(if (s.simple) "نخفي الأرقام التقنية ونعرض النتيجة والإجراء المقترح." else "كل القراءات والمسارات والأدوات ظاهرة.")
-        T("المظهر", weight = FontWeight.SemiBold)
+        T("المظهر", weight = FontWeight.Bold)
         Tabs(listOf("dark" to "داكن", "light" to "فاتح", "auto" to "النظام"), when (s.dark) { true -> "dark"; false -> "light"; null -> "auto" }) {
             s.setTheme(when (it) { "dark" -> true; "light" -> false; else -> null })
         }
-        T("الأتمتة", weight = FontWeight.SemiBold)
+        T("الأتمتة", weight = FontWeight.Bold)
         val c = chores
         fun change(key: String, on: Boolean) {
             if (on && android.os.Build.VERSION.SDK_INT >= 33) notify.launch(android.Manifest.permission.POST_NOTIFICATIONS)
@@ -613,7 +613,7 @@ fun SettingsScreen(s: AppState) {
         val privileged = Privileged.level(context) != Access.Normal
         Toggle(Automation.weeklyCache(context), "مسح الكاش كل أسبوع", if (privileged) "لكل التطبيقات، عبر الصلاحية المفعّلة." else "يحتاج Shizuku أو روت.", enabled = privileged) { change("weeklyCache", it) }
         Toggle(Automation.alertFull(context), "نبهني عند امتلاء 90%") { change("alertFull", it) }
-        T("الخصوصية", weight = FontWeight.SemiBold)
+        T("الخصوصية", weight = FontWeight.Bold)
         T("يعمل بدون إنترنت: ما عنده صلاحية إنترنت أصلاً، فما بيقدر يرسل نتائج الفحص لأي جهة.", color = Jard.colors.inkQuiet)
         Toggle(s.keepResults, "احفظ نتيجة آخر فحص", "تُحفظ أسماء الملفات وأحجامها على هذا الهاتف فقط، لتفتح بدون فحص جديد.") { s.changeKeepResults(it) }
         LinkRow(if (s.rootOn) "صلاحية الروت مفعّلة" else "صلاحية الروت غير مفعّلة") { s.page = Page.Access }
@@ -632,7 +632,35 @@ fun AboutScreen(s: AppState) {
             FactRow("المطوّر", "Mahmoud F.M. Abuteir")
             FactRow("النسخة", if (s.proKey != null) "Pro" else "المجانية")
         }
-        Muted("الخطوط: IBM Plex (OFL-1.1). مكتبة Shizuku-API (Apache-2.0).")
+        T("سياسة الخصوصية", weight = FontWeight.Bold)
+        Muted("بدون حساب، وبدون إعلانات، وبدون تتبّع.")
+        for ((head, body) in listOf(
+            "اللي بنقرأه" to "أسماء الملفات وأحجامها وتواريخها لنحسب المساحة. محتوى الملفات فقط لما تطلب كشف المكررات، والمقارنة بتصير على هاتفك وما بنحفظ المحتوى.",
+            "وين بتضل" to "على هاتفك فقط. التطبيق ما عنده إذن الإنترنت أصلاً. تقدر توقف حفظ النتائج من الإعدادات.",
+            "لما تشارك" to "التقارير والملفات ما بتطلع إلا لما تشاركها أنت من تطبيق تاني.",
+            "الإزالة" to "إزالة التطبيق بتمسح بياناته. الحجر المؤقت في مجلد على التخزين، ففرّغه قبل الإزالة إذا فيه ملفات.",
+        )) {
+            Card {
+                T(head, weight = FontWeight.Bold)
+                Muted(body)
+            }
+        }
+        T("الدعم والمشاكل", weight = FontWeight.Bold)
+        Muted("صفحة المشاكل عامة، فما تكتب فيها معلومات خاصة.")
+        Btn("فتح صفحة المشاكل", {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/mahmoudteirdev/jard/issues")))
+        }, Modifier.fillMaxWidth())
+        T("المكتبات المفتوحة وتراخيصها", weight = FontWeight.Bold)
+        Card {
+            FactRow("AndroidX, Kotlin", "Apache-2.0")
+            FactRow("Shizuku API", "MIT")
+            FactRow("IBM Plex", "OFL-1.1")
+        }
+        var notices by remember { mutableStateOf<String?>(null) }
+        Btn(if (notices == null) "عرض نصوص التراخيص" else "إخفاء النصوص", {
+            notices = if (notices != null) null else context.assets.open("licenses.txt").bufferedReader().use { it.readText() }
+        }, Modifier.fillMaxWidth())
+        notices?.let { Num(it, size = 11) }
     }
 }
 

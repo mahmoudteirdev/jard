@@ -45,7 +45,7 @@ export function GuardScreen() {
   if (!pending) {
     return (
       <div className="empty">
-        <h1 style={{ fontSize: 24 }}>ما قبل الحذف</h1>
+        <h1 style={{ fontSize: 26 }}>ما قبل الحذف</h1>
         <p className="quiet">ما في شي محدد. اختر ملفات من التنظيف أو التخزين أولاً.</p>
         <div className="actions"><a className="btn btn-primary" href={href("cleanup")}>افتح التنظيف</a></div>
       </div>
@@ -203,7 +203,7 @@ export function GuardScreen() {
         <section className="card" aria-labelledby="uac" style={{ maxWidth: 720 }}>
           <h2 id="uac" className="card-title">يحتاج صلاحية مسؤول</h2>
           <div className="card-body">
-            <p style={{ fontSize: 16 }}>
+            <p style={{ fontSize: 18 }}>
               <span className="num">{num(failed.filter((f) => f.failure?.kind === "denied").length)}</span> من المحدد رفض ويندوز نقله. باقي المحدد انتقل. ويندوز رح يسأل عن صلاحية مسؤول لمرة واحدة.
             </p>
             <ul className="muted truth-list">

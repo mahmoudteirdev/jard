@@ -85,8 +85,8 @@
   --touch-min: 44px;
 }
 
-body { margin: 0; background: var(--surface-base); color: var(--ink); font: 14px/1.5 var(--font-text); }
+body { margin: 0; background: var(--surface-base); color: var(--ink); font: 500 16px/1.5 var(--font-text); }
 /* أرقام ومسارات وأكواد: دائماً LTR وأحادية العرض */
-.num, .path { direction: ltr; unicode-bidi: isolate; font-family: var(--font-mono); }
+.num, .path { direction: ltr; unicode-bidi: isolate; font-family: var(--font-mono); font-weight: 500; }
 a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

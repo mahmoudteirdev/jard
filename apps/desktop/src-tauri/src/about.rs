@@ -90,6 +90,18 @@ pub(crate) fn deactivate(app: AppHandle) -> Result<(), String> {
     }
 }
 
+/// The license texts of the open-source code in the program, built in so they travel with it.
+#[tauri::command]
+pub(crate) fn third_party_notices() -> &'static str {
+    include_str!("../THIRD_PARTY_NOTICES.txt")
+}
+
+/// Opens the issues page in the person's own browser. The app itself connects to nothing here.
+#[tauri::command]
+pub(crate) fn open_issues() -> Result<(), String> {
+    tauri_plugin_opener::open_url("https://github.com/mahmoudteirdev/jard/issues", None::<&str>).map_err(|e| e.to_string())
+}
+
 /// Writes panics to a local file. Nothing is sent anywhere.
 pub(crate) fn install_crash_log(app: &AppHandle) {
     let Ok(dir) = data_dir(app) else { return };

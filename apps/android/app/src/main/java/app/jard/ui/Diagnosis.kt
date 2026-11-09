@@ -73,11 +73,11 @@ fun SlowScreen(s: AppState) {
     }
     Page {
         Head(s, "ليش هاتفي بطيء؟")
-        T(if (causes.isEmpty()) "ما لقينا سبباً واضحاً في القراءات" else "أكبر سبب: ${I18n.tr(causes[0].title)}", style = JardType.title.copy(fontSize = 22.sp))
+        T(if (causes.isEmpty()) "ما لقينا سبباً واضحاً في القراءات" else "أكبر سبب: ${I18n.tr(causes[0].title)}", style = JardType.title.copy(fontSize = 24.sp))
         for (c in causes) {
             Card {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    T(c.title, Modifier.weight(1f), weight = FontWeight.SemiBold)
+                    T(c.title, Modifier.weight(1f), weight = FontWeight.Bold)
                     Num(c.metric)
                 }
                 T(c.plain, color = Jard.colors.inkQuiet)
@@ -96,9 +96,9 @@ fun DeviceScreen(s: AppState) {
     val system = remember { Facts.system() }
     Page {
         Head(s, "معلومات الجهاز", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
-        T("العتاد", weight = FontWeight.SemiBold)
+        T("العتاد", weight = FontWeight.Bold)
         Card { for (f in hardware) FactRow(f.key, f.value) }
-        T("النظام", weight = FontWeight.SemiBold)
+        T("النظام", weight = FontWeight.Bold)
         Card { for (f in system) FactRow(f.key, f.value) }
     }
 }
@@ -125,7 +125,7 @@ fun BatteryScreen(s: AppState) {
             FactRow("السعة الأصلية", b.designMah?.let { "$it mAh" } ?: "غير متاحة")
             FactRow("الشحنة الآن", b.chargeNowMah?.let { "$it mAh" } ?: "غير متاحة")
         }
-        T("اختبار السعة", weight = FontWeight.SemiBold)
+        T("اختبار السعة", weight = FontWeight.Bold)
         T("يقيس الشحن الفعلي أثناء التفريغ. ابدأ وأنت مش شاحن، واستخدم الهاتف عادي، وارجع لما تنزل البطارية 15% على الأقل.", color = Jard.colors.inkQuiet)
         val mah = b.chargeNowMah
         if (mah == null) {
@@ -178,7 +178,7 @@ fun BenchScreen(s: AppState) {
             }
         }, Modifier.fillMaxWidth(), enabled = !busy)
         Muted("يكتب ملفاً مؤقتاً 64 MB ثم يحذفه.")
-        T("فحص البيكسلات الميتة", weight = FontWeight.SemiBold)
+        T("فحص البيكسلات الميتة", weight = FontWeight.Bold)
         T("اختر لوناً وافتحه على كامل الشاشة. أي نقطة مختلفة تعني مشكلة في البيكسل.", color = Jard.colors.inkQuiet)
         Tabs(pixelColors, color) { color = it }
         Btn("فتح على كامل الشاشة", { s.testing = "pixels:$color"; s.page = Page.Pixels }, Modifier.fillMaxWidth())
@@ -221,7 +221,7 @@ fun SecurityScreen(s: AppState) {
                 if (f == null) Muted("يقرأ…")
                 else if (f.isEmpty()) T("ما لقينا شي يستاهل المراجعة. هذا لا يضمن إن الجهاز آمن تماماً.", color = Jard.colors.inkQuiet)
                 else for (x in f) Card(borderColor = if (x.warn) Jard.colors.statusWarn else Jard.colors.line) {
-                    T(x.title, weight = FontWeight.SemiBold)
+                    T(x.title, weight = FontWeight.Bold)
                     T(x.apps.joinToString(" · "), color = Jard.colors.ink)
                     Muted(x.why)
                 }
@@ -231,7 +231,7 @@ fun SecurityScreen(s: AppState) {
                 if (p == null) Muted("يقرأ…")
                 else for (x in p) Card {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        T(x.name, Modifier.weight(1f), weight = FontWeight.SemiBold)
+                        T(x.name, Modifier.weight(1f), weight = FontWeight.Bold)
                         Num(x.apps.size.toString())
                     }
                     Muted(x.apps.take(6).joinToString(" · ") + if (x.apps.size > 6) " …" else "")
@@ -254,7 +254,7 @@ fun SecurityScreen(s: AppState) {
                     t.isEmpty() -> T("ما لقينا متتبعات من اللي بنعرفها. القائمة مش كاملة.", color = Jard.colors.inkQuiet)
                     else -> for (x in t) Card {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            T(x.app, Modifier.weight(1f), weight = FontWeight.Medium)
+                            T(x.app, Modifier.weight(1f), weight = FontWeight.SemiBold)
                             Num(x.trackers.size.toString())
                         }
                         Muted(x.trackers.joinToString(" · "))
@@ -293,7 +293,7 @@ fun NetworkScreen(s: AppState, resumed: Int) {
                             items(r, key = { it.pkg }) { a ->
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        T(a.name, Modifier.weight(1f), weight = FontWeight.Medium)
+                                        T(a.name, Modifier.weight(1f), weight = FontWeight.SemiBold)
                                         Num(sizeText(a.total))
                                     }
                                     ShareBar(a.total.toFloat() / max, JardData.d2)
@@ -305,7 +305,7 @@ fun NetworkScreen(s: AppState, resumed: Int) {
                 }
             }
             else -> {
-                T("هذا القسم يحتاج اتصالاً بالشبكة.", weight = FontWeight.SemiBold)
+                T("هذا القسم يحتاج اتصالاً بالشبكة.", weight = FontWeight.Bold)
                 T("فحص الأجهزة والمنافذ يحتاج إذن الإنترنت، وجَرد على أندرويد ما عنده هذا الإذن عن قصد: هيك مستحيل يطلع منه شي. نسخة الكمبيوتر فيها هذا الفحص.", color = Jard.colors.inkQuiet)
             }
         }
@@ -357,25 +357,25 @@ fun WidgetsScreen(s: AppState) {
         Head(s, "الويدجت والإشعارات")
         note?.let { Note(it, Jard.colors.statusWarn) }
         Card {
-            T("ويدجت كبير", weight = FontWeight.SemiBold)
+            T("ويدجت كبير", weight = FontWeight.Bold)
             Muted("التخزين")
             Num("${sizeText(storage.used)} / ${sizeText(storage.total)}", size = 18)
             ShareBar(storage.used.toFloat() / storage.total.coerceAtLeast(1), Jard.colors.accent, height = 6.dp)
             Btn("أضف للشاشة الرئيسية", { pin(LargeWidget::class.java) }, Modifier.fillMaxWidth())
         }
         Card {
-            T("ويدجت صغير", weight = FontWeight.SemiBold)
+            T("ويدجت صغير", weight = FontWeight.Bold)
             Muted("متاح")
             Num(sizeText(storage.free), size = 18)
             Btn("أضف للشاشة الرئيسية", { pin(SmallWidget::class.java) }, Modifier.fillMaxWidth())
         }
-        T("الإشعارات", weight = FontWeight.SemiBold)
+        T("الإشعارات", weight = FontWeight.Bold)
         Card {
-            T("المساحة وصلت 90%", weight = FontWeight.Medium)
+            T("المساحة وصلت 90%", weight = FontWeight.SemiBold)
             Muted("افتح جرد لتعرف شو ماخذها.")
         }
         Card {
-            T("انتهى الفحص الأسبوعي", weight = FontWeight.Medium)
+            T("انتهى الفحص الأسبوعي", weight = FontWeight.SemiBold)
             Muted("يخبرك شو كبر هذا الأسبوع.")
         }
         Btn("تشغيلها من الإعدادات", { s.page = Page.Settings }, Modifier.fillMaxWidth())

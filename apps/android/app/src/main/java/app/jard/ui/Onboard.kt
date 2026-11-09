@@ -72,7 +72,7 @@ fun OnboardScreen(s: AppState, resumed: Int) {
                     Box(Modifier.fillMaxWidth(0.7f).height(12.dp).background(JardData.d2))
                     Box(Modifier.fillMaxWidth(0.4f).height(12.dp).background(JardData.d3))
                 }
-                T("اعرف شو جوّا هاتفك", style = JardType.title.copy(fontSize = 28.sp))
+                T("اعرف شو جوّا هاتفك", style = JardType.title.copy(fontSize = 30.sp))
                 T("نفحص التخزين والتطبيقات والبطارية والأمان، ونشرح النتيجة بكلام واضح.", color = Jard.colors.inkQuiet)
                 T("يعمل بدون إنترنت. نتائج الفحص تبقى على هاتفك.", color = Jard.colors.inkQuiet)
                 Tabs(listOf("ar" to "العربية", "en" to "English"), if (I18n.english) "en" else "ar") { I18n.setLanguage(context, it == "en") }
@@ -105,7 +105,7 @@ fun OnboardScreen(s: AppState, resumed: Int) {
                             .border(BorderStroke(1.dp, if (on) Jard.colors.accent else Jard.colors.lineStrong))
                             .clickable(role = Role.RadioButton) { simple = value }.padding(12.dp),
                     ) {
-                        T(name, weight = FontWeight.SemiBold)
+                        T(name, weight = FontWeight.Bold)
                         Muted(desc)
                     }
                 }
@@ -127,9 +127,9 @@ fun OnboardScreen(s: AppState, resumed: Int) {
 @Composable
 private fun PermissionCard(name: String, why: String, granted: Boolean, ask: () -> Unit) {
     Card(borderColor = if (granted) Jard.colors.statusGood else Jard.colors.line) {
-        T(name, weight = FontWeight.SemiBold)
+        T(name, weight = FontWeight.Bold)
         Muted(why)
-        if (granted) T("تم السماح", color = Jard.colors.statusGood, weight = FontWeight.Medium)
+        if (granted) T("تم السماح", color = Jard.colors.statusGood, weight = FontWeight.SemiBold)
         else Btn("سماح", ask, Modifier.fillMaxWidth())
     }
 }
@@ -158,7 +158,7 @@ fun SimpleHome(s: AppState) {
                 percent >= 75 -> "هاتفك بخير، بس المساحة بدها انتباه"
                 else -> "هاتفك فيه مساحة كافية"
             },
-            style = JardType.title.copy(fontSize = 30.sp),
+            style = JardType.title.copy(fontSize = 32.sp),
         )
         T(
             when {
@@ -184,7 +184,7 @@ private fun BigAction(title: String, note: String, primary: Boolean = false, onC
             .border(BorderStroke(1.dp, if (primary) c.accent else c.line))
             .clickable(role = Role.Button, onClick = onClick).padding(16.dp),
     ) {
-        T(title, style = JardType.heading.copy(fontSize = 18.sp), color = if (primary) c.accentOn else c.ink, weight = FontWeight.Bold)
+        T(title, style = JardType.heading.copy(fontSize = 20.sp), color = if (primary) c.accentOn else c.ink, weight = FontWeight.Bold)
         T(note, color = if (primary) c.accentOn else c.inkQuiet)
     }
 }
@@ -216,7 +216,7 @@ fun CleanScreen(s: AppState) {
             CheckRow(checked.containsKey(it.node.id), { on -> if (on) checked[it.node.id] = it.node else checked.remove(it.node.id) }, it.node.name, enabled = !s.guest) {
                 Column(Modifier.weight(1f)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        T(it.node.name, Modifier.weight(1f), weight = FontWeight.Medium)
+                        T(it.node.name, Modifier.weight(1f), weight = FontWeight.SemiBold)
                         Num(sizeText(it.node.onDisk))
                     }
                     Muted(it.why)
@@ -262,17 +262,17 @@ private fun NothingToClean(s: AppState, tree: app.jard.engine.ScanTree) {
     Page {
         Head(s, "جهازك نظيف فعلاً")
         T("ما لقينا ملفات تثبيت قديمة ولا سلة مهملات ولا شي قديم يستاهل الحذف. المساحة رايحة على أشياء تستخدمها.", color = Jard.colors.inkQuiet)
-        T("وين رايحة المساحة", weight = FontWeight.SemiBold)
+        T("وين رايحة المساحة", weight = FontWeight.Bold)
         Card {
             for ((k, v) in kinds.take(4)) FactRow(k.label, sizeText(v))
         }
-        T("خيارات غير الحذف", weight = FontWeight.SemiBold)
+        T("خيارات غير الحذف", weight = FontWeight.Bold)
         if (video > 0) Card {
-            T("انقل الفيديو لبطاقة الذاكرة أو كمبيوتر", weight = FontWeight.Medium)
+            T("انقل الفيديو لبطاقة الذاكرة أو كمبيوتر", weight = FontWeight.SemiBold)
             Muted("يفضي مساحة داخلية بحجم ${ltr(sizeText(video))}.")
         }
         if (photos > 0) Card {
-            T("ارفع الصور القديمة لخدمة سحابية", weight = FontWeight.Medium)
+            T("ارفع الصور القديمة لخدمة سحابية", weight = FontWeight.SemiBold)
             Muted("تأخذ ${ltr(sizeText(photos))} هون. يحتاج إنترنت، من تطبيق غير جرد.")
         }
         Muted("ما بنقترح حذف شي تستخدمه. لو ضليت ضيّق، شوف أكبر التطبيقات.")
@@ -288,7 +288,7 @@ fun ResultScreen(s: AppState) {
     Page {
         Muted("خرج من مكانه")
         Num(sizeText(s.movedBytes), size = 44, color = Jard.colors.accent)
-        T("انتقل ${s.movedCount} عنصر إلى الحجر المؤقت.", weight = FontWeight.Medium)
+        T("انتقل ${s.movedCount} عنصر إلى الحجر المؤقت.", weight = FontWeight.SemiBold)
         T("المساحة ما بتتحرر قبل انتهاء الـ 30 يوماً أو تفريغ الحجر: هذا اللي بيخليك تسترجعها.", color = Jard.colors.inkQuiet)
         Card {
             FactRow("المستخدم الآن", "${sizeText(storage.used)} / ${sizeText(storage.total)}")
@@ -321,19 +321,19 @@ fun ExplainScreen(s: AppState) {
     val reason = remember(n) { protectedReason(tree, n) }
     Page {
         Head(s, "شو هذا؟")
-        T(n.name, style = JardType.title.copy(fontSize = 20.sp))
+        T(n.name, style = JardType.title.copy(fontSize = 22.sp))
         Num(sizeText(n.onDisk), size = 18)
-        T(e.safety.word, weight = FontWeight.SemiBold, color = when (e.safety) {
+        T(e.safety.word, weight = FontWeight.Bold, color = when (e.safety) {
             Safety.Safe, Safety.Mostly -> Jard.colors.statusGood
             Safety.Keep -> Jard.colors.statusSerious
             else -> Jard.colors.statusWarn
         })
         Card {
-            T("شو هذا؟", weight = FontWeight.SemiBold)
+            T("شو هذا؟", weight = FontWeight.Bold)
             T(e.what, color = Jard.colors.inkQuiet)
         }
         Card {
-            T("شو بصير لو حذفته؟", weight = FontWeight.SemiBold)
+            T("شو بصير لو حذفته؟", weight = FontWeight.Bold)
             T(e.ifDeleted, color = Jard.colors.inkQuiet)
         }
         if (reason != null) Muted(reason)
@@ -379,5 +379,36 @@ fun LockedFolders(s: AppState) {
             Box(Modifier.weight(1f)) { Num(path) }
             Muted(note)
         }
+    }
+}
+
+/** The permission went during a scan, or the system closed the app. Says what's left, and what to do. */
+@Composable
+fun ScanLostScreen(s: AppState, resumed: Int) {
+    val has = remember(resumed) { s.canScan }
+    val interrupted = s.scanInterrupted
+    val kept = !interrupted && s.tree?.partial == true
+    Page {
+        Title(if (interrupted) "انقطع الفحص الأخير" else "انسحبت الصلاحية أثناء الفحص")
+        T(
+            if (interrupted) "وقف النظام التطبيق أثناء الفحص، أو انسحبت صلاحية الملفات. يصير هذا من إعدادات النظام، أو لما يحتاج الهاتف ذاكرة."
+            else "توقف الفحص عند ${s.lostPercent}%. يصير هذا لما تُلغى الصلاحية من إعدادات النظام.",
+            color = Jard.colors.inkQuiet,
+        )
+        Card {
+            T("المحفوظ حتى الآن", weight = FontWeight.Bold)
+            T(
+                if (kept) "نتائج ${app.jard.engine.countText(s.lostFiles)} ملف. نعرضها معلّمة كغير مكتملة ولا نحذفها."
+                else "ما انحفظ شي من هذا الفحص. نتيجة الفحص الكامل السابق، إذا في، بتضل مكانها.",
+                color = Jard.colors.inkQuiet,
+            )
+        }
+        if (has) {
+            Btn("فحص من جديد", { s.page = Page.None; s.startScan() }, Modifier.fillMaxWidth(), BtnKind.Primary, minHeight = 52.dp)
+        } else {
+            Btn("إعادة السماح", { s.page = Page.Permission }, Modifier.fillMaxWidth(), BtnKind.Primary, minHeight = 52.dp)
+        }
+        if (kept) Btn("عرض النتائج الجزئية", { s.page = Page.None; s.tab = Tab.Files }, Modifier.fillMaxWidth())
+        else Btn("رجوع", { s.page = Page.None }, Modifier.fillMaxWidth())
     }
 }

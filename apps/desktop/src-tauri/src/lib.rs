@@ -125,6 +125,8 @@ struct DoneDto {
     partial: bool,
     /// Set when the scan could not start (folder missing, not a folder).
     error: Option<String>,
+    /// The scanned folder is gone: its drive was unplugged, or it was moved, during the scan.
+    root_gone: bool,
 }
 
 /// What `scan_status` returns: lets the UI catch up on events it subscribed to late.
@@ -136,7 +138,8 @@ struct StatusDto {
 }
 
 fn done_of(tree: &Tree) -> DoneDto {
-    DoneDto { root_id: Tree::ROOT, elapsed_ms: tree.elapsed.as_millis() as u64, partial: tree.partial, error: None }
+    let root_gone = !tree.root.exists();
+    DoneDto { root_id: Tree::ROOT, elapsed_ms: tree.elapsed.as_millis() as u64, partial: tree.partial || root_gone, error: None, root_gone }
 }
 
 #[tauri::command]
@@ -178,7 +181,7 @@ fn start_scan(
                 Err(e) => {
                     let msg = e.to_string();
                     scans.set(id, Scan::Failed(msg.clone()));
-                    DoneDto { root_id: Tree::ROOT, elapsed_ms: 0, partial: true, error: Some(msg) }
+                    DoneDto { root_id: Tree::ROOT, elapsed_ms: 0, partial: true, error: Some(msg), root_gone: false }
                 }
             };
             let _ = app.emit(&format!("scan://done/{id}"), done);
@@ -194,6 +197,14 @@ fn cancel_scan(scans: State<'_, Scans>, scan_id: ScanId) {
     }
 }
 
+/// Holds a running scan, or lets it go on. What's been read stays counted.
+#[tauri::command]
+fn pause_scan(scans: State<'_, Scans>, scan_id: ScanId, paused: bool) {
+    if let Some(Scan::Running(p)) = scans.map.lock().unwrap_or_else(|e| e.into_inner()).get(&scan_id) {
+        p.set_paused(paused);
+    }
+}
+
 #[tauri::command]
 fn scan_status(scans: State<'_, Scans>, scan_id: ScanId) -> Result<StatusDto, String> {
     match scans.map.lock().unwrap_or_else(|e| e.into_inner()).get(&scan_id) {
@@ -201,7 +212,7 @@ fn scan_status(scans: State<'_, Scans>, scan_id: ScanId) -> Result<StatusDto, St
         Some(Scan::Done(t)) => Ok(StatusDto { progress: None, done: Some(done_of(&read(t))) }),
         Some(Scan::Failed(e)) => Ok(StatusDto {
             progress: None,
-            done: Some(DoneDto { root_id: Tree::ROOT, elapsed_ms: 0, partial: true, error: Some(e.clone()) }),
+            done: Some(DoneDto { root_id: Tree::ROOT, elapsed_ms: 0, partial: true, error: Some(e.clone()), root_gone: false }),
         }),
         None => Err(format!("no scan {scan_id}")),
     }
@@ -315,6 +326,15 @@ pub fn run_scheduled(folder: &str) -> i32 {
     scheduled::run(folder)
 }
 
+/// A plain folder, or the one to scan again after restarting with administrator rights.
+fn startup_folder_arg(args: Vec<String>) -> Option<String> {
+    match args.get(1).map(String::as_str) {
+        Some("--after-exit") => args.get(3).cloned(),
+        Some(a) if a.starts_with("--") => None,
+        other => other.map(str::to_string),
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         // Must be first. "Scan with Jard" while the app is open: bring it forward and scan there.
@@ -323,7 +343,7 @@ pub fn run() {
                 let _ = w.unminimize();
                 let _ = w.set_focus();
             }
-            if let Some(folder) = args.get(1) {
+            if let Some(folder) = args.get(1).filter(|a| !a.starts_with("--")) {
                 let _ = app.emit("jard://open-folder", folder.clone());
             }
         }))
@@ -331,7 +351,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(Scans::default())
-        .manage(StartupFolder(Mutex::new(std::env::args().nth(1).filter(|a| !a.starts_with("--")))))
+        .manage(StartupFolder(Mutex::new(startup_folder_arg(std::env::args().collect()))))
         .manage(clean::Moved::default())
         .manage(Arc::new(tools::Busy::default()))
         .setup(|app| {
@@ -355,6 +375,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             start_scan,
             cancel_scan,
+            pause_scan,
             scan_status,
             forget_scan,
             get_children,
@@ -375,6 +396,9 @@ pub fn run() {
             clean::find_duplicates,
             clean::find_similar_photos,
             clean::truth_facts,
+            clean::denied_folders,
+            about::third_party_notices,
+            about::open_issues,
             clean::elevated_quarantine,
             clean::elevated_restore,
             clean::elevated_delete,

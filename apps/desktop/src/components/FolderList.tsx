@@ -4,7 +4,7 @@ import { engine, type NodeDto, type ScanId, type SortKey } from "../engine";
 import { percent, size, type Unit } from "../format";
 import { Badges } from "./Badges";
 
-const ROW_H = 56; // row with a share bar (tokens: row.withBar)
+const ROW_H = 64; // row with a share bar (tokens: row.withBar)
 const PAGE = 200; // children fetched per request (HANDOFF §5: more than 200 rows -> paged)
 const OVERSCAN = 8;
 

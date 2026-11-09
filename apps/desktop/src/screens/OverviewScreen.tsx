@@ -48,7 +48,7 @@ export function OverviewScreen({ session, drives }: { session: Session | null; d
   if (!session || session.phase !== "done") {
     return (
       <div className="empty">
-        <h1 style={{ fontSize: 24 }}>نظرة عامة</h1>
+        <h1 style={{ fontSize: 26 }}>نظرة عامة</h1>
         <p className="quiet">
           {session?.phase === "running" ? "الفحص جارٍ. الملخص يظهر هنا حين ينتهي." : "أهلاً بك في جَرد. نفحص أقراصك ونشرح النتائج، وكل شي يبقى على جهازك والبرنامج يعمل بدون إنترنت."}
         </p>
@@ -118,8 +118,8 @@ export function OverviewScreen({ session, drives }: { session: Session | null; d
         ) : (
           actions.slice(0, 3).map((a, i) => (
             <div key={a.title} className="line-item action-row">
-              <span className="num accent-text" style={{ fontSize: 20, width: 24 }}>{i + 1}</span>
-              <span className="grow"><strong style={{ fontWeight: 600 }}>{a.title}</strong><br /><span className="muted">{a.why}</span></span>
+              <span className="num accent-text" style={{ fontSize: 22, width: 24 }}>{i + 1}</span>
+              <span className="grow"><strong style={{ fontWeight: 700 }}>{a.title}</strong><br /><span className="muted">{a.why}</span></span>
               <a className="btn" href={href(a.to)}>{a.cta}</a>
             </div>
           ))
@@ -130,7 +130,7 @@ export function OverviewScreen({ session, drives }: { session: Session | null; d
         {cards.map((c) => (
           <a key={c.label} className="card overview-card" href={href(c.to)}>
             <span className="muted">{c.label}</span>
-            <strong style={{ fontSize: 18, fontWeight: 600 }}>{c.value}</strong>
+            <strong style={{ fontSize: 20, fontWeight: 700 }}>{c.value}</strong>
             <span className="muted small">{c.note}</span>
           </a>
         ))}

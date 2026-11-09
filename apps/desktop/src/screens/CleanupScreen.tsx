@@ -5,6 +5,7 @@ import { engine, type Candidate, type CandidateKind, type DuplicateGroup, type N
 import { ago, middle, num, size } from "../format";
 import { href } from "../routes";
 import type { Session } from "../scan-session";
+import { openFinderOn } from "./FinderScreen";
 import { useSettings } from "../settings";
 
 type Tab = CandidateKind | "dupes";
@@ -48,7 +49,7 @@ function Rows(props: {
                   </label>
                 </td>
                 <td>
-                  <div className="name" style={{ fontWeight: 500 }}>{c.node.name}</div>
+                  <div className="name" style={{ fontWeight: 600 }}>{c.node.name}</div>
                   <div className="path label muted" title={c.path}>{middle(c.path, 80)}</div>
                 </td>
                 <td className="quiet">
@@ -118,7 +119,7 @@ export function CleanupScreen({ session }: { session: Session | null }) {
   if (scanId === null || !session) {
     return (
       <div className="empty">
-        <h1 style={{ fontSize: 24 }}>التنظيف</h1>
+        <h1 style={{ fontSize: 26 }}>التنظيف</h1>
         <p className="quiet">
           {session?.phase === "running" ? "الفحص جارٍ. الاقتراحات تظهر هنا حين ينتهي." : "الاقتراحات تُبنى من نتيجة الفحص. افحص قرصاً أولاً."}
         </p>
@@ -189,7 +190,10 @@ export function CleanupScreen({ session }: { session: Session | null }) {
       ) : list.length === 0 ? (
         <div className="empty" style={{ paddingTop: 8 }}>
           <p className="quiet">{current.empty}</p>
-          <div className="actions"><a className="btn" href={href("storage")}>تصفح التخزين</a></div>
+          <div className="actions">
+            {tab === "dupes" && <button type="button" className="btn" onClick={() => openFinderOn("similar")}>جرّب الصور المتشابهة</button>}
+            <a className="btn" href={href("storage")}>تصفح التخزين</a>
+          </div>
         </div>
       ) : (
         <Rows list={list} head={current.head} keepOf={tab === "dupes" ? keepOf : undefined} checked={checked} toggle={toggle} />

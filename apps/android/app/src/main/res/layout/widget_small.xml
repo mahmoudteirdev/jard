@@ -7,6 +7,6 @@
     android:gravity="center_vertical"
     android:orientation="vertical"
     android:padding="10dp">
-    <TextView android:id="@+id/title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#A3AEA6" android:textSize="12sp" />
-    <TextView android:id="@+id/size" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#EDF1EC" android:textSize="18sp" android:textDirection="ltr" android:gravity="start" android:fontFamily="monospace" />
+    <TextView android:id="@+id/title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#A3AEA6" android:textSize="14sp" android:textStyle="bold" />
+    <TextView android:id="@+id/size" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#EDF1EC" android:textSize="20sp" android:textStyle="bold" android:textDirection="ltr" android:gravity="start" android:fontFamily="monospace" />
 </LinearLayout>

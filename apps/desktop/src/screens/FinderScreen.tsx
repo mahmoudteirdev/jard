@@ -5,11 +5,19 @@ import { engine, type FileKind, type NodeDto, type Program, type SearchHit, type
 import { Leftovers } from "./MoreScreens";
 import { explain, KIND_NAMES } from "../file-kinds";
 import { middle, num, size } from "../format";
-import { href } from "../routes";
+import { go, href } from "../routes";
 import type { Session } from "../scan-session";
 import { useSettings } from "../settings";
 
 type Tab = "all" | "noext" | "empty" | "similar" | "left";
+
+let requestedTab: Tab | null = null;
+
+/** Opens the search screen on one tab, from another screen. */
+export function openFinderOn(tab: Tab) {
+  requestedTab = tab;
+  go("finder");
+}
 
 const TABS: { id: Tab; name: string }[] = [
   { id: "all", name: "الأكبر" },
@@ -124,7 +132,11 @@ export function FinderScreen({ session }: { session: Session | null }) {
   const [kind, setKind] = useState<FileKind | "">("");
   const [minMb, setMinMb] = useState(0);
   const [oldOnly, setOldOnly] = useState(false);
-  const [tab, setTab] = useState<Tab>("all");
+  const [tab, setTab] = useState<Tab>(() => {
+    const t = requestedTab ?? "all";
+    requestedTab = null;
+    return t;
+  });
   const [hits, setHits] = useState<SearchHit[] | null>(null);
   const [cur, setCur] = useState<SearchHit | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -160,7 +172,7 @@ export function FinderScreen({ session }: { session: Session | null }) {
   if (scanId === null) {
     return (
       <div className="empty">
-        <h1 style={{ fontSize: 24 }}>البحث</h1>
+        <h1 style={{ fontSize: 26 }}>البحث</h1>
         <p className="quiet">البحث يتم داخل نتيجة الفحص، بدون قراءة القرص من جديد. افحص قرصاً أولاً.</p>
         <div className="actions"><a className="btn btn-primary" href={href("storage")}>افتح التخزين</a></div>
       </div>
@@ -236,7 +248,7 @@ export function FinderScreen({ session }: { session: Session | null }) {
                 onClick={() => setCur(h)}
               >
                 <span className="grow">
-                  <span className="name" style={{ display: "block", fontWeight: 500 }}>{h.node.name}</span>
+                  <span className="name" style={{ display: "block", fontWeight: 600 }}>{h.node.name}</span>
                   <span className="path label muted" style={{ display: "block" }} title={h.path}>{middle(h.path, 70)}</span>
                 </span>
                 <span className="num">{size(h.node.onDisk, unit)}</span>
@@ -247,7 +259,7 @@ export function FinderScreen({ session }: { session: Session | null }) {
             <aside className="card" aria-labelledby="ex" style={{ flex: "1 1 320px", minWidth: 0, position: "sticky", top: 0 }}>
               <h2 id="ex" className="card-title">شو هذا {cur.node.isDir ? "المجلد" : "الملف"}؟</h2>
               <div className="card-body">
-                <strong className="name" style={{ fontSize: 16 }}>{cur.node.name}</strong>
+                <strong className="name" style={{ fontSize: 18 }}>{cur.node.name}</strong>
                 <span className={`badge safety-${ex.safety}`} style={{ alignSelf: "flex-start" }}>{ex.label}</span>
                 <p className="quiet">{ex.what}</p>
                 <p className="muted small">{ex.action}</p>

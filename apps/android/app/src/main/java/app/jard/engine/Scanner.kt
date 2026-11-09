@@ -15,6 +15,8 @@ class ScanProgress {
     val bytes = AtomicLong()
     val cancelled = AtomicBoolean()
     val paused = AtomicBoolean()
+    /** The permission was taken back during the scan, as opposed to one folder refusing. */
+    val permissionLost = AtomicBoolean()
 
     @Volatile
     var current: String = ""
@@ -22,12 +24,13 @@ class ScanProgress {
 
 object Scanner {
     /** Walks shared storage with the all-files permission. Reads names, sizes and dates, never contents. */
-    fun scanFiles(root: File, progress: ScanProgress): ScanTree {
+    fun scanFiles(root: File, progress: ScanProgress, allowed: () -> Boolean = { true }): ScanTree {
         val nodes = ArrayList<FileNode>(4096)
         nodes.add(FileNode(0, root.path, -1, true, root.path))
         val stack = ArrayDeque<Int>()
         stack.addLast(0)
         var stopped = false
+        var listed = 0
         while (stack.isNotEmpty()) {
             if (progress.cancelled.get()) {
                 stopped = true
@@ -40,6 +43,16 @@ object Scanner {
             val dir = nodes[id]
             progress.current = dir.location
             val entries = File(dir.location).listFiles()
+            // Without the permission Android may answer with nothing or with a shortened list, so it's
+            // asked directly: whenever a folder refuses, and every so often in case none does.
+            listed++
+            if ((entries == null || listed % 200 == 0) && !allowed()) {
+                progress.permissionLost.set(true)
+                stopped = true
+                dir.partial = true
+                for (waiting in stack) nodes[waiting].partial = true
+                break
+            }
             if (entries == null) {
                 dir.denied = true
                 continue
@@ -98,6 +111,7 @@ object Scanner {
                     for ((id, _) in stack) nodes[id].partial = true
                     break
                 }
+                while (progress.paused.get() && !progress.cancelled.get()) Thread.sleep(150)
                 val (id, doc) = stack.removeLast()
                 progress.current = nodes[id].name
                 val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, doc)
@@ -109,6 +123,12 @@ object Scanner {
                 if (cursor == null) {
                     // The permission was taken back mid-scan, or the folder is gone: keep what we have.
                     nodes[id].partial = true
+                    if (resolver.persistedUriPermissions.none { it.uri == tree }) {
+                        progress.permissionLost.set(true)
+                        stopped = true
+                        for ((waiting, _) in stack) nodes[waiting].partial = true
+                        break
+                    }
                     continue
                 }
                 cursor.use { c ->

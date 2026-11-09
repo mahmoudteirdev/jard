@@ -158,9 +158,15 @@ pub fn run_elevated(data_dir: &str, job_path: &str, sha: &str) -> i32 {
 /// Starts the whole app again with administrator rights, then closes this one.
 /// False: the person said no, and this copy stays open.
 #[tauri::command]
-pub(crate) async fn relaunch_as_admin(app: AppHandle) -> Result<bool, String> {
+pub(crate) async fn relaunch_as_admin(app: AppHandle, folder: Option<String>) -> Result<bool, String> {
     let parent = main_window(&app);
-    let params = format!("--after-exit {}", std::process::id());
+    let mut params = format!("--after-exit {}", std::process::id());
+    if let Some(f) = folder {
+        // A backslash before the closing quote would escape it, as in "C:\". A path can't hold a quote.
+        let f = f.replace('"', "");
+        let f = if f.ends_with('\\') { format!("{f}\\") } else { f };
+        params.push_str(&format!(" \"{f}\""));
+    }
     let started = tauri::async_runtime::spawn_blocking(move || shell_runas(&params, parent, false))
         .await
         .map_err(|e| e.to_string())?;

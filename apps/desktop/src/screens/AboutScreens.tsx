@@ -1,9 +1,70 @@
 // About, updates, the diagnostic file, and Pro activation.
 
 import { useEffect, useState } from "react";
+import THIRD_PARTY from "../third-party.json";
 import { engine, type KeyCheck, type LicenseError, type LicenseStatus, type UpdateInfo } from "../engine";
 import { href } from "../routes";
 import { updateSettings, useSettings } from "../settings";
+
+const PRIVACY: { head: string; body: string }[] = [
+  { head: "اللي بنقرأه", body: "أسماء الملفات وأحجامها وتواريخها لنحسب المساحة. محتوى الملفات فقط لما تطلب كشف المكررات أو الصور المتشابهة، والمقارنة بتصير على جهازك وما بنحفظ المحتوى." },
+  { head: "وين بتضل", body: "على جهازك فقط. تقدر تمسح النتائج المحفوظة أو توقف حفظها من الإعدادات." },
+  { head: "البحث عن التحديثات", body: "مغلق حتى توافق. لما تفعّله، نقرأ رقم آخر إصدار من GitHub ولا نرسل بيانات عن جهازك. GitHub يرى عنوان IP كأي اتصال." },
+  { head: "VirusTotal", body: "مغلق حتى تفعّله بمفتاحك. نرسل بصمة الملف اللي تختاره، مش الملف نفسه." },
+  { head: "ملف التشخيص", body: "ما ينرسل لحاله. تشوفه أول وتبعته بنفسك. ما فيه أسماء ملفاتك ولا محتواها ولا مفتاح التفعيل." },
+  { head: "الإزالة", body: "عند إزالة البرنامج نسألك عن النتائج والحجر والتفعيل، والافتراضي إنها تبقى." },
+];
+
+function Privacy() {
+  return (
+    <section className="card" aria-labelledby="privacy">
+      <h2 id="privacy" className="card-title">سياسة الخصوصية</h2>
+      <div className="card-body">
+        <p>بدون حساب، وبدون إعلانات، وبدون تتبّع.</p>
+        {PRIVACY.map((p) => (
+          <div key={p.head}>
+            <strong>{p.head}</strong>
+            <p className="muted" style={{ margin: "2px 0 0" }}>{p.body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Everything open-source in this build, from a list made at build time. */
+function OpenSource() {
+  const [notices, setNotices] = useState<string | null>(null);
+  return (
+    <section className="card" aria-labelledby="oss">
+      <h2 id="oss" className="card-title">المكتبات المفتوحة وتراخيصها</h2>
+      {LIBS.map((l) => (
+        <div key={l.name} className="line-item quarantine-row">
+          <span className="num grow" style={{ flex: "1 1 140px" }}>{l.name}</span>
+          <span className="num label badge">{l.lic}</span>
+          <span className="muted small">{l.note}</span>
+        </div>
+      ))}
+      <details className="line-item">
+        <summary>كل المكتبات · <span className="num">{THIRD_PARTY.length}</span></summary>
+        <div className="oss-list">
+          {THIRD_PARTY.map((p) => (
+            <div key={p.name + p.version} className="change-top small">
+              <span className="num">{p.name} {p.version}</span>
+              <span className="num muted">{p.license}</span>
+            </div>
+          ))}
+        </div>
+      </details>
+      <div className="line-item actions-row">
+        <button type="button" className="btn" onClick={() => void engine.thirdPartyNotices().then(setNotices, (e) => setNotices(String(e)))}>
+          عرض نصوص التراخيص
+        </button>
+      </div>
+      {notices !== null && <pre className="notices" dir="ltr" tabIndex={0}>{notices}</pre>}
+    </section>
+  );
+}
 
 const LIBS: { name: string; lic: string; note: string }[] = [
   { name: "Tauri", lic: "MIT / Apache-2.0", note: "نافذة البرنامج" },
@@ -121,6 +182,7 @@ function Diagnostics() {
         {text !== null && <pre className="path small diag" aria-label="محتوى ملف التشخيص">{text}</pre>}
         {status && <p role="status" className="small">{status}</p>}
         <div className="actions-row">
+          <button type="button" className="btn" onClick={() => void engine.openIssues().catch((e) => setStatus(String(e)))}>فتح صفحة المشاكل</button>
           <button type="button" className="btn" onClick={() => void engine.diagnosticsText().then(setText, (e) => setStatus(String(e)))}>إنشاء ملف تشخيص</button>
           {text !== null && (
             <button
@@ -161,17 +223,9 @@ export function AboutScreen() {
             <div className="actions-row"><a className="btn" href={href("license")}>النسخة والتفعيل</a></div>
           </div>
         </section>
-        <section className="card" aria-labelledby="oss">
-          <h2 id="oss" className="card-title">مكتبات مفتوحة أساسية وتراخيصها</h2>
-          {LIBS.map((l) => (
-            <div key={l.name} className="line-item quarantine-row">
-              <span className="num grow" style={{ flex: "1 1 140px" }}>{l.name}</span>
-              <span className="num label badge">{l.lic}</span>
-              <span className="muted small">{l.note}</span>
-            </div>
-          ))}
-        </section>
+        <OpenSource />
         <Diagnostics />
+        <Privacy />
       </div>
     </>
   );

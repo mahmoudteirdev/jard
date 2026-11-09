@@ -24,7 +24,7 @@
 - ألوان البيانات الخمسة ثابتة في الوضعين، وتفشل في فحص توحيد الإضاءة عن قصد (موثّق في لوحة Tokens). **لا تعتمد عليها وحدها:** بجانب كل لون اسمه وحجمه.
 - لا ظلال، لا تدرجات، لا زوايا دائرية، لا إيموجي. `radius = 0`.
 - الخطوط: IBM Plex Sans Arabic (400/500/600/700) وIBM Plex Mono (400/500)، ترخيص OFL. ضمّنها محلياً في التطبيق، لا من الإنترنت (البرنامج يعمل بلا اتصال).
-- أصغر نص 12px. لا تنزل عنها.
+- أصغر نص 14px. لا تنزل عنها. النص الأساسي 16px بوزن 500، والأرقام بوزن 500: الوزن 400 نحيف على الخلفية الداكنة.
 - الأرقام والمسارات والأكواد: `direction: ltr` وخط Mono (الصنف `.num` و`.path` في `tokens.css`)، حتى داخل نص عربي. الأرقام غربية (0-9) دائماً.
 
 ## 3. الشبكة والمقاسات
@@ -41,7 +41,7 @@
 
 مصدرها لوحة `Components` (مصفوفة حالات كاملة). المشترك لكل المكونات:
 
-- أقل ارتفاع للنقر **44px**؛ صف بسطرين 48؛ صف فيه شريط نسبة 56.
+- أقل ارتفاع للنقر **44px**؛ صف بسطرين 56؛ صف فيه شريط نسبة 64.
 - حلقة التركيز: `outline: 2px solid accent; outline-offset: 2px`. لا تُخفَ أبداً (`:focus-visible`).
 - حد الأزرار والحقول `line.strong` (3.3:1)، والفواصل `line` (زخرفية).
 - زر كهرماني **واحد** في الشاشة.
@@ -65,7 +65,7 @@
 
 ```text
 start_scan(root, opts?: { threads?, maxDepth?, dedupHardlinks?, excluded?: string[] }, keep?: boolean) -> scanId
-cancel_scan(scanId) · scan_status(scanId) · forget_scan(scanId)
+cancel_scan(scanId) · pause_scan(scanId, paused) · scan_status(scanId) · forget_scan(scanId)
 get_children(scanId, nodeId, sort: "on_disk" | "apparent" | "name", limit?, offset?) -> NodeDto[]
 get_node(scanId, nodeId) · get_path(scanId, nodeId) · get_ancestors(scanId, nodeId) · reveal(scanId, nodeId)
 export_json(scanId, path) · list_drives() · startup_folder()
@@ -74,17 +74,17 @@ preview_clean(scanId, nodeIds) · quarantine_nodes(scanId, nodeIds) · list_quar
 restore_item(id, onConflict) · delete_item(id) · read_log(limit?)
 elevated_quarantine(scanId, nodeIds) · elevated_restore(id, keepBoth) · elevated_delete(id)   // -> { declined, result }
 cleanup_candidates(scanId, kind, limit?) · data_folders(scanId)
-find_duplicates(scanId, limit?) · find_similar_photos(scanId) · truth_facts(scanId) · volume_facts()
+find_duplicates(scanId, limit?) · find_similar_photos(scanId) · truth_facts(scanId) · volume_facts() · denied_folders(scanId, limit?)
 saved_scans() · open_saved(key) · forget_saved() · scan_points(key) · compare_scans(key, from, to) · kinds_of(scanId) · search_scan(scanId, query, limit?)
 
 event  scan://progress/{scanId}  -> { files, dirs, bytes, denied, current, done, cancelled }   // كل 100ms كحد أقصى
-event  scan://done/{scanId}      -> { rootId, elapsedMs, partial, error }
+event  scan://done/{scanId}      -> { rootId, elapsedMs, partial, error, rootGone }
 event  jard://open-folder        -> string   // "افحص بجرد" والبرنامج مفتوح
 ```
 
 `NodeDto`: `id, name, parent, isDir, childCount, ownApparent, ownOnDisk, ownFiles, apparent, onDisk, files, dirs, cloudBytes, dedupBytes, denied, flags, modified, protected`. `childCount` بدل قائمة الأبناء، لأن الأبناء يُطلبون صفحة صفحة. `protected` سبب المنع إن وُجد، فلا يُعرض إجراء النقل أصلاً.
 
-**وضعيات بلا نافذة** (`main.rs`): `--scheduled <folder>` للمهمة المجدولة، `--startup-check` عند الدخول، `--uninstall-clean scans|quarantine|license` للمُزيل، `--elevated <dir> <job> <sha256>` لعملية واحدة بصلاحية مسؤول، `--after-exit <pid>` لإعادة التشغيل كمسؤول.
+**وضعيات بلا نافذة** (`main.rs`): `--scheduled <folder>` للمهمة المجدولة، `--startup-check` عند الدخول، `--uninstall-clean scans|quarantine|license` للمُزيل، `--elevated <dir> <job> <sha256>` لعملية واحدة بصلاحية مسؤول، `--after-exit <pid> [folder]` لإعادة التشغيل كمسؤول وفحص المجلد نفسه.
 
 **صلاحية المسؤول لعملية واحدة:** البرنامج يبقى بلا صلاحيات. نسخة قصيرة العمر تقرأ ملف المهمة، تتحقق من بصمته المكتوبة في سطر أوامرها، تنفّذ عبر `Store` نفسه (فالمسارات المحمية تبقى ممنوعة)، وتخرج.
 
@@ -133,6 +133,9 @@ event  jard://open-folder        -> string   // "افحص بجرد" والبرن
 | أندرويد بلا إذن إنترنت، فتبويبا "الأجهزة" و"المنافذ" يشرحان ذلك بدل فحص الشبكة | وعد "ولا بايت" أهم، ونسخة سطح المكتب فيها هذا الفحص. استهلاك الإنترنت لكل تطبيق يأتي من عدّادات النظام ولا يحتاج الإذن |
 | VirusTotal على سطح المكتب فقط | يحتاج إنترنت. لذلك خيار لوحة PhoneSettings غير موجود |
 | الأسهم في قائمة المجلدات: في العربية الأيسر يدخل والأيمن يرجع | ملاحظة لوحة Shortcuts تقول العكس لكنها تبرر بـ"اتجاه القراءة"، وهذا لا يتحقق إلا هكذا، ويوافق سهم الصف. اعكسه إذا قصدت غير ذلك |
+| خطوات شاشة الفحص خطوتان فقط: القراءة ثم الحساب والحفظ | كشف المكررات والمقارنة لا يعملان أثناء الفحص، فلوحة Scan تذكر خطوات غير موجودة |
+| انفصال القرص أثناء الفحص يعرض النتائج الجزئية وزر إعادة الفحص، لا استئنافاً من نفس النقطة | الفحص لا يحفظ مكان توقفه |
+| سحب صلاحية الملفات على أندرويد يُغلق التطبيق نفسه، فالشاشة تظهر عند الفتح التالي ولا نتائج جزئية منها | سلوك النظام. النتائج الجزئية تبقى فقط إذا لم يُغلق، كما في المجلدات المختارة |
 | إقران Shizuku يتم داخل تطبيق Shizuku | الإقران من جرد يحتاج إذن شبكة |
 | مسح الكاش التلقائي يحتاج Shizuku أو روت | أندرويد لا يسمح به لتطبيق عادي |
 | كل ميزات Pro مفتوحة حالياً، والتفعيل شغال | السعر وحدّ التجربة لم يُحسما (القسم 10) |

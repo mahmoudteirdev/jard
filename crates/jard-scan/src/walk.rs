@@ -145,11 +145,13 @@ impl Walker<'_> {
             if self.progress.is_cancelled() {
                 return None;
             }
-            if let Some(job) = queue.pop() {
-                return Some(job);
-            }
-            if self.pending.load(SeqCst) == 0 {
-                return None;
+            if !self.progress.is_paused() {
+                if let Some(job) = queue.pop() {
+                    return Some(job);
+                }
+                if self.pending.load(SeqCst) == 0 {
+                    return None;
+                }
             }
             // The timeout is how waiting workers notice a cancel.
             queue = self.wake.wait_timeout(queue, Duration::from_millis(50)).unwrap_or_else(|e| e.into_inner()).0;

@@ -15,7 +15,7 @@ fn main() {
         // One operation with administrator rights, then gone.
         [_, "--elevated", data_dir, job, sha] => std::process::exit(jard_desktop_lib::run_elevated(data_dir, job, sha)),
         // Restarting with administrator rights: the old copy has to close first.
-        [_, "--after-exit", pid] => {
+        [_, "--after-exit", pid, ..] => {
             if let Ok(pid) = pid.parse() {
                 jard_desktop_lib::wait_for_exit(pid);
             }

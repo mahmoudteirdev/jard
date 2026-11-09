@@ -104,7 +104,7 @@ export function CompareScreen({ session }: { session: Session | null }) {
   if (saved && saved.length === 0) {
     return (
       <div className="empty">
-        <h1 style={{ fontSize: 24 }}>المقارنة</h1>
+        <h1 style={{ fontSize: 26 }}>المقارنة</h1>
         <p className="quiet">ما في فحوص محفوظة بعد. كل فحص يُحفظ ملخصه على جهازك، ومن فحصين تعرف شو تغيّر.</p>
         <div className="actions"><a className="btn btn-primary" href={href("storage")}>افتح التخزين</a></div>
       </div>
@@ -117,7 +117,7 @@ export function CompareScreen({ session }: { session: Session | null }) {
         <div className="title">
           <h1>المقارنة</h1>
           {points.length >= 2 && a && b && (
-            <p style={{ fontSize: 17 }}>
+            <p style={{ fontSize: 19 }}>
               {delta >= 0 ? "زاد" : "نقص"} المستخدم <span className="num accent-text">{signed(delta, unit)}</span> بين {moment(a.at)} و{moment(b.at)}
             </p>
           )}
@@ -158,7 +158,7 @@ export function CompareScreen({ session }: { session: Session | null }) {
             <div className="card-body">
               <GrowthChart points={points} unit={unit} />
               <p>
-                <strong style={{ fontWeight: 600 }}>التوقع: </strong>
+                <strong style={{ fontWeight: 700 }}>التوقع: </strong>
                 {days === null
                   ? "يلزم نمو واضح عبر أسبوع على الأقل، على قرص كامل، ليصير التوقع معقولاً."
                   : <>يمتلئ القرص خلال <span className="num">{Math.max(1, Math.round(days / 30))}</span> شهر تقريباً إذا استمر نفس المعدل.</>}

@@ -84,7 +84,7 @@ export function ProgramsScreen({ session }: { session: Session | null }) {
                     const when = dateOf(p.installDate);
                     return (
                       <tr key={p.key}>
-                        <td><div className="name" style={{ fontWeight: 500 }}>{p.name}</div>{p.version && <div className="num label muted">{p.version}</div>}</td>
+                        <td><div className="name" style={{ fontWeight: 600 }}>{p.name}</div>{p.version && <div className="num label muted">{p.version}</div>}</td>
                         <td className="quiet"><bdi>{p.publisher ?? "—"}</bdi></td>
                         <td className="quiet">{when ? ago(when.getTime()) : "—"}</td>
                         <td><span className="num">{p.sizeKb ? size(p.sizeKb * 1024, unit) : "—"}</span></td>
@@ -120,7 +120,7 @@ export function ProgramsScreen({ session }: { session: Session | null }) {
                     const when = dateOf(d.date);
                     return (
                       <tr key={`${d.name}|${d.version}`}>
-                        <td className="name" style={{ fontWeight: 500 }}>{d.name}</td>
+                        <td className="name" style={{ fontWeight: 600 }}>{d.name}</td>
                         <td className="quiet"><bdi>{d.maker ?? "—"}</bdi></td>
                         <td><span className="num">{d.version}</span></td>
                         <td className="quiet">{when ? ago(when.getTime()) : "—"}</td>
@@ -181,13 +181,13 @@ export function HealthScreen({ session, drives }: { session: Session | null; dri
             {sick.map((d) => (
               <div key={d.name} className="line-item action-row">
                 <span className="badge safety-keep">تحذير</span>
-                <span className="grow"><strong style={{ fontWeight: 600 }}><bdi>{d.name}</bdi> حالته {HEALTH[d.health]?.word ?? d.health}.</strong> <span className="muted">خذ نسخة احتياطية من بياناته قريباً.</span></span>
+                <span className="grow"><strong style={{ fontWeight: 700 }}><bdi>{d.name}</bdi> حالته {HEALTH[d.health]?.word ?? d.health}.</strong> <span className="muted">خذ نسخة احتياطية من بياناته قريباً.</span></span>
               </div>
             ))}
             {low.map((d) => (
               <div key={d.root} className="line-item action-row">
                 <span className="badge safety-careful">تنبيه</span>
-                <span className="grow"><strong style={{ fontWeight: 600 }}>قرص <span className="num">{d.root.replace(/\\$/, "")}</span> شبه ممتلئ.</strong> <span className="muted">المتاح {size(d.free, unit)} فقط.</span></span>
+                <span className="grow"><strong style={{ fontWeight: 700 }}>قرص <span className="num">{d.root.replace(/\\$/, "")}</span> شبه ممتلئ.</strong> <span className="muted">المتاح {size(d.free, unit)} فقط.</span></span>
                 <a className="btn" href={href("cleanup")}>فتح التنظيف</a>
               </div>
             ))}
@@ -207,7 +207,7 @@ export function HealthScreen({ session, drives }: { session: Session | null; dri
               <tbody>
                 {(disks.data ?? []).map((d: Disk) => (
                   <tr key={d.name}>
-                    <td><div className="name" style={{ fontWeight: 500 }}>{d.name}</div><div className="label muted">{MEDIA[d.media] ?? d.media} · <span className="num">{size(d.size, unit)}</span></div></td>
+                    <td><div className="name" style={{ fontWeight: 600 }}>{d.name}</div><div className="label muted">{MEDIA[d.media] ?? d.media} · <span className="num">{size(d.size, unit)}</span></div></td>
                     <td><strong className={HEALTH[d.health]?.cls ?? "safety-unknown"}>{HEALTH[d.health]?.word ?? "غير معروف"}</strong></td>
                     <td><span className="num">{d.temperature ? `${d.temperature}°C` : "—"}</span></td>
                     <td><span className="num">{d.hours != null ? num(d.hours) : "—"}</span></td>
@@ -257,7 +257,7 @@ export function TestsScreen({ drives }: { drives: import("../engine").Drive[] })
       <Head title="الاختبارات" />
       <section className="stats" aria-label="اختبارات العتاد">
         <article className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 600 }}>سرعة القرص</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 700 }}>سرعة القرص</h2>
           <p className="muted">يكتب ويقرأ ملفاً مؤقتاً بحجم <span className="num">256 MB</span> على قرص النظام، ثم يحذفه. قراءة وكتابة متتابعة بدون ذاكرة التخزين المؤقت.</p>
           {speed ? (
             <span className="num" role="status">R {num(Math.round(speed.readMbS))} / W {num(Math.round(speed.writeMbS))} MB/s</span>
@@ -282,7 +282,7 @@ export function TestsScreen({ drives }: { drives: import("../engine").Drive[] })
                   <tr key={i}>
                     <td style={{ width: 70 }}><span className={`badge ${e.level === 1 ? "safety-keep" : "safety-careful"}`}>{e.level === 1 ? "حرج" : "خطأ"}</span></td>
                     <td>
-                      <div className="name" style={{ fontWeight: 500 }}>{e.message ?? "بدون وصف"}</div>
+                      <div className="name" style={{ fontWeight: 600 }}>{e.message ?? "بدون وصف"}</div>
                       <div className="path label muted">{e.provider} · Event {e.id}</div>
                     </td>
                     <td className="muted" style={{ whiteSpace: "nowrap" }}>{ago(new Date(e.at).getTime())}</td>

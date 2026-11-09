@@ -4,7 +4,7 @@ import { reasonText } from "../clean-text";
 import { FolderList, KIND_COLOR } from "../components/FolderList";
 import { Badges } from "../components/Badges";
 import { Treemap, type MapItem } from "../components/Treemap";
-import { engine, Flag, type Drive, type NodeDto, type SortKey } from "../engine";
+import { engine, Flag, type Candidate, type Drive, type NodeDto, type SortKey } from "../engine";
 import { ago, middle, num, size, type Unit } from "../format";
 import { groupTotals } from "../file-kinds";
 import { go, href } from "../routes";
@@ -42,7 +42,7 @@ function FirstRun({ drives, failed }: { drives: Drive[]; failed?: Session }) {
   };
   return (
     <div className="empty">
-      <h1 style={{ fontSize: 24 }}>التخزين</h1>
+      <h1 style={{ fontSize: 26 }}>التخزين</h1>
       {failed ? (
         <p className="note error" role="alert">
           <span>تعذّر فحص <span className="num">{failed.root}</span>: {failed.done?.error}. اختر قرصاً أو مجلداً آخر.</span>
@@ -247,6 +247,56 @@ function DriveUsage({ root, drive, unit, dedup }: { root: NodeDto; drive: Drive;
   );
 }
 
+/** Folders Windows wouldn't list: shown rather than quietly missing from the totals (States board). */
+function DeniedFolders({ scanId, count, sessionRoot, version, onOpen }: {
+  scanId: number;
+  count: number;
+  sessionRoot: string;
+  version: number;
+  onOpen: (id: number) => void;
+}) {
+  const [list, setList] = useState<Candidate[] | null>(null);
+  const [admin, setAdmin] = useState(true);
+  const [said, setSaid] = useState<string | null>(null);
+  useEffect(() => {
+    engine.isAdmin().then(setAdmin, () => setAdmin(true));
+    setList(null);
+  }, [scanId, version]);
+  const show = () => void engine.deniedFolders(scanId).then(setList, (e) => setSaid(String(e)));
+  return (
+    <section className="note warn denied" aria-label="مجلدات تعذرت قراءتها" style={{ display: "block" }}>
+      <p style={{ margin: 0 }}>
+        تعذرت قراءة <span className="num">{num(count)}</span> مجلد، فالأحجام المعروضة ممكن تكون أقل من الحقيقة.
+        {admin ? " حتى كمسؤول، النظام بيمنع بعضها." : " السبب غالباً نقص الصلاحيات."}
+      </p>
+      <div className="actions-row" style={{ marginTop: 8 }}>
+        {!admin && (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => void engine.relaunchAsAdmin(sessionRoot).then((yes) => !yes && setSaid("ما وافق ويندوز على الصلاحية، فالبرنامج مستمر كما هو."), (e) => setSaid(String(e)))}
+          >
+            إعادة الفحص كمسؤول
+          </button>
+        )}
+        <button type="button" className="btn" onClick={() => (list ? setList(null) : show())}>{list ? "إخفاء المجلدات" : "عرض المجلدات"}</button>
+        {said && <span role="status" className="small">{said}</span>}
+      </div>
+      {list && (
+        <div className="denied-list" style={{ marginTop: 8 }}>
+          {list.map((c) => (
+            <div key={c.node.id} className="line-item quarantine-row">
+              <span className="path small grow" title={c.path}>{middle(c.path, 80)}</span>
+              {c.node.parent !== null && <button type="button" className="btn" onClick={() => onOpen(c.node.parent as number)}>اعرضه</button>}
+            </div>
+          ))}
+          {count > list.length && <p className="muted small">أول <span className="num">{num(list.length)}</span> مجلد.</p>}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function Results({ session }: { session: Session }) {
   const { unit, dedupHardlinks, keepResults, level } = useSettings();
   const simple = level === "simple";
@@ -416,7 +466,13 @@ function Results({ session }: { session: Session }) {
         <button type="button" className="btn btn-primary" onClick={rescan}>فحص جديد</button>
       </header>
 
-      {session.done?.partial && (
+      {session.done?.rootGone ? (
+        <p className="note warn" role="status">
+          <span>انفصل <span className="num">{session.root}</span> أثناء الفحص، أو انتقل من مكانه. ما انقرأ قبلها ظاهر هنا، وأرقامه أقل من الحقيقة. أعد توصيله وأعد الفحص.</span>
+          <button type="button" className="btn" onClick={rescan}>أعد الفحص</button>
+          <a className="btn" href={href("drives")}>عرض الأقراص</a>
+        </p>
+      ) : session.done?.partial && (
         <p className="note warn" role="status">
           <span>
             {session.progress?.cancelled
@@ -426,6 +482,7 @@ function Results({ session }: { session: Session }) {
           <button type="button" className="btn" onClick={rescan}>أعد الفحص</button>
         </p>
       )}
+      {root.denied > 0 && <DeniedFolders scanId={scanId} count={root.denied} sessionRoot={session.root} version={version} onOpen={(id) => open({ id } as NodeDto)} />}
       {notice && (
         <p className={`note ${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>
           <span>{notice.text}</span>
@@ -522,7 +579,7 @@ export function StorageScreen({ session, drives }: { session: Session | null; dr
   if (session.phase === "running") {
     return (
       <div className="empty">
-        <h1 style={{ fontSize: 24 }}>التخزين</h1>
+        <h1 style={{ fontSize: 26 }}>التخزين</h1>
         <p className="quiet">الفحص جارٍ. النتائج تظهر هنا حين ينتهي.</p>
         <div className="actions"><button type="button" className="btn btn-primary" onClick={() => go("scan")}>اعرض التقدم</button></div>
       </div>

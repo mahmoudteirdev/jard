@@ -67,13 +67,14 @@ fun ltr(text: String) = "⁦$text⁩"
 @Composable
 fun Num(text: String, modifier: Modifier = Modifier, size: Int = 13, color: Color = Jard.colors.ink) {
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        BasicText(text, modifier, style = TextStyle(fontFamily = JardMono, fontSize = size.sp, color = color))
+        // Two points above the size asked for, in the heavier weight: numbers read at a glance.
+        BasicText(text, modifier, style = TextStyle(fontFamily = JardMono, fontSize = (size + 2).sp, fontWeight = FontWeight.Medium, color = color))
     }
 }
 
 @Composable
 fun Title(text: String) {
-    T(text, Modifier.semantics { heading() }, JardType.title.copy(fontSize = 22.sp))
+    T(text, Modifier.semantics { heading() }, JardType.title.copy(fontSize = 24.sp))
 }
 
 @Composable
@@ -115,7 +116,7 @@ fun Btn(
             .padding(horizontal = 14.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        T(text, style = JardType.body, color = fg, weight = if (kind == BtnKind.Primary) FontWeight.Bold else FontWeight.Medium, align = TextAlign.Center)
+        T(text, style = JardType.body, color = fg, weight = if (kind == BtnKind.Primary) FontWeight.Bold else FontWeight.SemiBold, align = TextAlign.Center)
     }
 }
 
@@ -225,7 +226,7 @@ fun Tabs(items: List<Pair<String, String>>, current: String, onPick: (String) ->
                     .clickable(role = Role.Tab) { onPick(id) }
                     .padding(horizontal = 4.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center,
-            ) { T(name, weight = if (on) FontWeight.SemiBold else FontWeight.Normal, align = TextAlign.Center) }
+            ) { T(name, weight = if (on) FontWeight.Bold else FontWeight.Medium, align = TextAlign.Center) }
         }
     }
 }
@@ -237,7 +238,7 @@ fun LinkRow(name: String, note: String? = null, onClick: () -> Unit) {
         Modifier.fillMaxWidth().heightIn(min = JardSpace.touchMin).clickable(role = Role.Button, onClick = onClick).padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
     ) {
-        T(name, weight = FontWeight.Medium)
+        T(name, weight = FontWeight.SemiBold)
         if (note != null) Muted(note)
     }
     Box(Modifier.fillMaxWidth().height(1.dp).background(Jard.colors.line))

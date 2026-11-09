@@ -239,7 +239,7 @@ export const mockEngine: Engine = {
     const r = nodes[0]!;
     const s: FakeScan = {
       root, nodes, started: Date.now(),
-      progress: { files: 0, dirs: 0, bytes: 0, denied: 0, current: root, done: false, cancelled: false },
+      progress: { files: 0, dirs: 0, bytes: 0, denied: 0, current: root, done: false, cancelled: false, paused: false },
       done: null, progressCbs: new Set(), doneCbs: new Set(),
       timer: setInterval(() => {
         const t = Math.min(1, (Date.now() - s.started) / DURATION_MS);
@@ -252,7 +252,7 @@ export const mockEngine: Engine = {
         }
         s.progress = {
           files: Math.round(r.files * t), dirs: Math.round(r.dirs * t), bytes: Math.round(r.onDisk * t * t),
-          denied: t > 0.6 ? r.denied : 0, current: root + parts.join("\\"), done: false, cancelled: false,
+          denied: t > 0.6 ? r.denied : 0, current: root + parts.join("\\"), done: false, cancelled: false, paused: false,
         };
         s.progressCbs.forEach((cb) => cb(s.progress));
         if (t >= 1) finish(s, false);
@@ -351,6 +351,14 @@ export const mockEngine: Engine = {
   async relaunchAsAdmin() {
     return false;
   },
+  async pauseScan() {},
+  async deniedFolders() {
+    return [];
+  },
+  async thirdPartyNotices() {
+    return "";
+  },
+  async openIssues() {},
   async getIntegration() {
     return { contextMenu: false, startCheck: false };
   },
