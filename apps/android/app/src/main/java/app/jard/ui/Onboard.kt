@@ -75,7 +75,7 @@ fun OnboardScreen(s: AppState, resumed: Int) {
                 T("اعرف شو جوّا هاتفك", style = JardType.title.copy(fontSize = 30.sp))
                 T("نفحص التخزين والتطبيقات والبطارية والأمان، ونشرح النتيجة بكلام واضح.", color = Jard.colors.inkQuiet)
                 T("يعمل بدون إنترنت. نتائج الفحص تبقى على هاتفك.", color = Jard.colors.inkQuiet)
-                Tabs(listOf("ar" to "العربية", "en" to "English"), if (I18n.english) "en" else "ar") { I18n.setLanguage(context, it == "en") }
+                Tabs(listOf("auto" to "النظام", "ar" to "العربية", "en" to "English"), I18n.preference) { I18n.setPreference(context, it) }
                 Btn("التالي", { step = 2 }, Modifier.fillMaxWidth(), BtnKind.Primary, minHeight = 52.dp)
             }
             2 -> {

@@ -9,7 +9,15 @@ export type Language = "ar" | "en";
 function readLanguage(): Language {
   try {
     const raw = localStorage.getItem("jard.settings");
-    return raw && (JSON.parse(raw) as { language?: string }).language === "en" ? "en" : "ar";
+    if (raw) {
+      const saved = (JSON.parse(raw) as { language?: string }).language;
+      if (saved === "en") return "en";
+      if (saved === "ar") return "ar";
+    }
+    if (typeof navigator !== "undefined" && navigator.language) {
+      return navigator.language.toLowerCase().startsWith("ar") ? "ar" : "en";
+    }
+    return "ar";
   } catch {
     return "ar";
   }

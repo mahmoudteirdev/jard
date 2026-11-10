@@ -16,20 +16,56 @@ object I18n {
     var english by mutableStateOf(false)
         private set
 
+    /** "auto" (follows device), "ar", or "en". */
+    var preference by mutableStateOf("auto")
+        private set
+
     private var exact: Map<String, String> = emptyMap()
     private var templates: List<Pair<Regex, String>> = emptyList()
     private val cache = ConcurrentHashMap<String, String>()
     private var loaded = false
 
+    fun isSystemEnglish(context: Context): Boolean {
+        val loc = if (android.os.Build.VERSION.SDK_INT >= 24) {
+            context.resources.configuration.locales.get(0)
+        } else {
+            @Suppress("DEPRECATION")
+            context.resources.configuration.locale
+        } ?: java.util.Locale.getDefault()
+        val lang = loc.language.lowercase()
+        return !lang.startsWith("ar")
+    }
+
     fun init(context: Context) {
         val prefs = context.getSharedPreferences("jard", Context.MODE_PRIVATE)
-        setLanguage(context, prefs.getString("language", "ar") == "en")
+        val saved = prefs.getString("language", "auto") ?: "auto"
+        preference = saved
+        val useEn = when (saved) {
+            "en" -> true
+            "ar" -> false
+            else -> isSystemEnglish(context)
+        }
+        applyLanguage(context, useEn)
+    }
+
+    fun setPreference(context: Context, pref: String) {
+        preference = pref
+        context.getSharedPreferences("jard", Context.MODE_PRIVATE).edit().putString("language", pref).apply()
+        val useEn = when (pref) {
+            "en" -> true
+            "ar" -> false
+            else -> isSystemEnglish(context)
+        }
+        applyLanguage(context, useEn)
     }
 
     fun setLanguage(context: Context, en: Boolean) {
+        setPreference(context, if (en) "en" else "ar")
+    }
+
+    private fun applyLanguage(context: Context, en: Boolean) {
         if (en && !loaded) load(runCatching { context.assets.open("en.json").bufferedReader().use { it.readText() } }.getOrDefault("{}"))
         english = en
-        context.getSharedPreferences("jard", Context.MODE_PRIVATE).edit().putString("language", if (en) "en" else "ar").apply()
     }
 
     internal fun load(json: String) {

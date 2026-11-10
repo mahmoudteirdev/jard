@@ -631,7 +631,7 @@ fun SettingsScreen(s: AppState) {
     Page {
         Head(s, "الإعدادات")
         T("اللغة", weight = FontWeight.Bold)
-        Tabs(listOf("ar" to "العربية", "en" to "English"), if (I18n.english) "en" else "ar") { I18n.setLanguage(context, it == "en") }
+        Tabs(listOf("auto" to "النظام", "ar" to "العربية", "en" to "English"), I18n.preference) { I18n.setPreference(context, it) }
         T("مستوى التفاصيل", weight = FontWeight.Bold)
         Tabs(listOf("simple" to "مبتدئ", "expert" to "خبير"), if (s.simple) "simple" else "expert") { s.setSimpleMode(it == "simple") }
         Muted(if (s.simple) "نخفي الأرقام التقنية ونعرض النتيجة والإجراء المقترح." else "كل القراءات والمسارات والأدوات ظاهرة.")
