@@ -254,12 +254,10 @@ pub fn parse_natural_query(prompt: &str, now_unix: u64) -> ParsedAiQuery {
 
     // 6. Detect Limit (e.g. "أكبر 10", "top 20")
     for i in 0..words.len() {
-        if words[i] == "top" || words[i] == "اول" || words[i] == "اكبر" {
-            if i + 1 < words.len() {
-                if let Ok(n) = words[i + 1].parse::<usize>() {
-                    if n > 0 && n <= 500 {
-                        limit = n;
-                    }
+        if (words[i] == "top" || words[i] == "اول" || words[i] == "اكبر") && i + 1 < words.len() {
+            if let Ok(n) = words[i + 1].parse::<usize>() {
+                if n > 0 && n <= 500 {
+                    limit = n;
                 }
             }
         }

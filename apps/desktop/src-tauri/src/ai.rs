@@ -120,7 +120,7 @@ pub(crate) fn predict_storage_depletion(
     let current_time = now();
 
     // Append current snapshot if more than 30 minutes since last recording
-    let should_record = snapshots.last().map_or(true, |last| {
+    let should_record = snapshots.last().is_none_or(|last| {
         current_time.saturating_sub(last.timestamp) >= 1800
     });
 

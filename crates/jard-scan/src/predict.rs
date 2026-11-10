@@ -242,7 +242,7 @@ mod tests {
         let snapshots = vec![
             StorageSnapshot { timestamp: now - 3 * day, free_bytes: 30 * 1024 * 1024 * 1024, total_bytes: total },
             StorageSnapshot { timestamp: now - 2 * day, free_bytes: 28 * 1024 * 1024 * 1024, total_bytes: total },
-            StorageSnapshot { timestamp: now - 1 * day, free_bytes: 26 * 1024 * 1024 * 1024, total_bytes: total },
+            StorageSnapshot { timestamp: now - day, free_bytes: 26 * 1024 * 1024 * 1024, total_bytes: total },
         ];
         // 2 GB burn per day. Current free: 24 GB. Usable (minus 5% of 100GB = 5GB) = 19 GB -> ~9-10 days
         let forecast = predict_depletion(&snapshots, 24 * 1024 * 1024 * 1024, total, now);

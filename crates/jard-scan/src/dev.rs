@@ -67,7 +67,7 @@ fn measure_folder(path: &Path) -> (u64, u64, u64) {
                 let len = meta.len();
                 apparent += len;
                 // Estimate cluster allocation (4096 cluster size minimum on NTFS)
-                let rounded = if len == 0 { 0 } else { ((len + 4095) / 4096) * 4096 };
+                let rounded = if len == 0 { 0 } else { len.div_ceil(4096) * 4096 };
                 on_disk += rounded;
             }
         }
@@ -128,8 +128,10 @@ fn get_project_last_modified(project_dir: &Path) -> u64 {
     }
 }
 
+type ArtifactSpec = (&'static str, &'static str, &'static str);
+
 /// Inspects a directory to check if it represents a known developer project and returns its artifact specs.
-fn inspect_project(dir: &Path) -> Option<(String, Vec<(&'static str, &'static str, &'static str)>)> {
+fn inspect_project(dir: &Path) -> Option<(String, Vec<ArtifactSpec>)> {
     let has_file = |name: &str| dir.join(name).is_file();
 
     if has_file("package.json") {
@@ -262,7 +264,7 @@ pub fn scan_dev_projects(roots: &[PathBuf], max_depth: usize) -> Vec<DevProject>
                         let path = entry.path();
                         let name = entry.file_name();
                         let name_str = name.to_string_lossy();
-                        if entry.file_type().map_or(false, |ft| ft.is_dir())
+                        if entry.file_type().is_ok_and(|ft| ft.is_dir())
                             && !name_str.starts_with('.')
                             && name_str != "node_modules"
                             && name_str != "target"
@@ -283,7 +285,7 @@ pub fn scan_dev_projects(roots: &[PathBuf], max_depth: usize) -> Vec<DevProject>
                         let name_str = name.to_string_lossy();
 
                         // Skip hidden system/tooling directories
-                        if entry.file_type().map_or(false, |ft| ft.is_dir())
+                        if entry.file_type().is_ok_and(|ft| ft.is_dir())
                             && !name_str.starts_with('.')
                             && name_str != "node_modules"
                             && name_str != "target"
@@ -300,7 +302,7 @@ pub fn scan_dev_projects(roots: &[PathBuf], max_depth: usize) -> Vec<DevProject>
         }
     }
 
-    results.sort_by(|a, b| b.total_on_disk.cmp(&a.total_on_disk));
+    results.sort_by_key(|a| std::cmp::Reverse(a.total_on_disk));
     results
 }
 
@@ -325,7 +327,7 @@ mod tests {
         drop(dummy);
         drop(cargo);
 
-        let projects = scan_dev_projects(&[temp.clone()], 3);
+        let projects = scan_dev_projects(std::slice::from_ref(&temp), 3);
         assert_eq!(projects.len(), 1);
         assert_eq!(projects[0].kind, "Rust");
         assert_eq!(projects[0].artifacts.len(), 1);

@@ -165,7 +165,7 @@ pub fn find_ghost_files(roots: &[PathBuf], min_days: u32, min_size_bytes: u64) -
         }
     }
 
-    ghosts.sort_by(|a, b| b.size.cmp(&a.size));
+    ghosts.sort_by_key(|a| std::cmp::Reverse(a.size));
     ghosts
 }
 
@@ -186,7 +186,7 @@ mod tests {
         drop(file);
 
         // Find ghost files with min_days 0 for testing
-        let ghosts = find_ghost_files(&[temp.clone()], 0, 10);
+        let ghosts = find_ghost_files(std::slice::from_ref(&temp), 0, 10);
         assert_eq!(ghosts.len(), 1);
         assert_eq!(ghosts[0].category, "Installer");
         assert_eq!(ghosts[0].name, "setup_app.exe");
