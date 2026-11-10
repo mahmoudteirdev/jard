@@ -116,13 +116,18 @@ export function Treemap(props: {
                 width: w,
                 height: h,
                 background: item.color,
+                cursor: "pointer",
               }}
               title={text}
+              onClick={() => props.onActivate(item)}
             >
               <button
                 type="button"
                 className="parent-title"
-                onClick={() => props.onActivate(item)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  props.onActivate(item);
+                }}
                 title={text}
               >
                 <strong className="name">{item.name}</strong>

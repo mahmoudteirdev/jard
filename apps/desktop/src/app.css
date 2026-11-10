@@ -152,31 +152,36 @@ legend { padding: 0 6px; font-weight: 700; }
    the height left in the window, and the list scrolls inside itself instead of growing the page. */
 .panes { display: flex; flex-wrap: wrap; gap: 0; position: relative; }
 .panes[data-dragging="true"] { cursor: col-resize; user-select: none; }
+.panes[data-dragging="true"] * { pointer-events: none !important; }
 
 .splitter-bar {
-  flex: 0 0 10px;
-  width: 10px;
+  flex: 0 0 12px;
+  width: 12px;
   cursor: col-resize;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  transition: background 0.15s;
+  background: var(--surface-raised);
+  border-inline: 1px solid var(--line);
+  transition: background 0.15s, border-color 0.15s;
   z-index: 10;
   user-select: none;
 }
 .splitter-bar:hover, .splitter-bar[data-dragging="true"] {
   background: var(--surface-hover);
+  border-color: var(--accent);
 }
 .splitter-handle {
-  width: 2px;
-  height: 48px;
+  width: 3px;
+  height: 52px;
   background: var(--line-strong);
-  border-radius: 1px;
+  border-radius: 2px;
+  transition: all 0.15s;
 }
 .splitter-bar:hover .splitter-handle, .splitter-bar[data-dragging="true"] .splitter-handle {
   background: var(--accent);
-  width: 4px;
+  width: 5px;
+  height: 72px;
 }
 
 .layout-bar { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 8px; }

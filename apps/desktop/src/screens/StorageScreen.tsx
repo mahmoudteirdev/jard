@@ -646,7 +646,22 @@ function Results({ session }: { session: Session }) {
             }}
           >
             <div className="list-head">
-              <h2 id="list-title" className="label muted">المحتويات · <span className="num">{num(folder.childCount)}</span></h2>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <h2 id="list-title" className="label muted">المحتويات · <span className="num">{num(folder.childCount)}</span></h2>
+                {splitMode === "tree-only" && (
+                  <button
+                    type="button"
+                    className="preset-btn"
+                    onClick={() => {
+                      setSplitMode("split");
+                      setSplitRatio(50);
+                    }}
+                    title="الرجوع إلى عرض الشجرة بجانب الخريطة"
+                  >
+                    إظهار الخريطة (50/50)
+                  </button>
+                )}
+              </div>
               <div className="seg" role="group" aria-label="الترتيب">
                 {SORTS.filter((s) => !simple || s.key !== "apparent").map((s) => (
                   <button key={s.key} type="button" aria-pressed={s.key === sort} onClick={() => setSort(s.key)}>{s.name}</button>
@@ -695,7 +710,32 @@ function Results({ session }: { session: Session }) {
             }}
           >
             <div className="map-toolbar">
-              <h2 id="map-title" className="label muted">خريطة المساحة</h2>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <h2 id="map-title" className="label muted">خريطة المساحة</h2>
+                {splitMode === "map-only" && (
+                  <button
+                    type="button"
+                    className="preset-btn"
+                    onClick={() => {
+                      setSplitMode("split");
+                      setSplitRatio(50);
+                    }}
+                    title="الرجوع إلى عرض الشجرة بجانب الخريطة"
+                  >
+                    إظهار الشجرة (50/50)
+                  </button>
+                )}
+                {chain.length > 1 && (
+                  <button
+                    type="button"
+                    className="drill-btn"
+                    onClick={() => open(chain[chain.length - 2]!)}
+                    title="الرجوع للمجلد الأب"
+                  >
+                    مستوى أعلى ↵
+                  </button>
+                )}
+              </div>
               <div className="seg" role="group" aria-label="عمق تفريغ الخريطة">
                 <span className="small muted">تفرّع الكتل:</span>
                 <button type="button" aria-pressed={mapDepth === 1} onClick={() => setMapDepth(1)} title="مستوى واحد">مستوى 1</button>
