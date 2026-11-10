@@ -1,6 +1,6 @@
 [package]
 name = "jard-license"
-version = "0.1.2"
+version = "0.1.3"
 description = "Jard Pro activation: device-bound files signed by the seller, checked offline."
 edition.workspace = true
 license.workspace = true

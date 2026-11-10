@@ -35,7 +35,7 @@ promises:
   - Three numbers per folder: apparent size, size on disk, and what isn't counted
   - No invented "health scores": readings as the system reports them
   - Android has no internet permission, so it can't send anything anywhere
-status: Version 0.1.2 (Offline local AI query engine & predictive storage depletion)
+status: Version 0.1.3 (Resizable split layout, expandable hierarchical tree & nested treemap)
 ```
 
 ## Download
