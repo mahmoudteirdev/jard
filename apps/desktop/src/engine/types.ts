@@ -375,6 +375,45 @@ export interface Schedule {
   ruleOldDownloads: boolean;
 }
 
+export interface DevArtifact {
+  name: string;
+  path: string;
+  apparent: number;
+  onDisk: number;
+  files: number;
+  cleanCmd: string;
+  reinstallCmd: string;
+}
+
+export interface DevProject {
+  path: string;
+  name: string;
+  kind: string;
+  lastModified: number;
+  daysInactive: number;
+  status: "Active" | "Stale" | "Abandoned" | string;
+  artifacts: DevArtifact[];
+  totalApparent: number;
+  totalOnDisk: number;
+}
+
+export interface GhostFile {
+  path: string;
+  name: string;
+  size: number;
+  created: number;
+  lastAccessed: number;
+  daysStale: number;
+  category: "Installer" | "Archive" | "DiskImage" | "Document" | "Media" | "Other" | string;
+  reason: string;
+}
+
+export interface BatchCleanResult {
+  moved: string[];
+  failed: [string, string][];
+  bytesReclaimed: number;
+}
+
 export type Unlisten = () => void;
 
 export interface Engine {
@@ -469,6 +508,9 @@ export interface Engine {
   networkNeighbors(): Promise<NetworkDevice[]>;
   diskPartitions(): Promise<Partition[]>;
   pickAnyFile(): Promise<string | null>;
+  scanDevBloat(roots?: string[]): Promise<DevProject[]>;
+  scanGhostFiles(roots?: string[], minDays?: number, minSizeMb?: number): Promise<GhostFile[]>;
+  quarantinePaths(paths: string[]): Promise<BatchCleanResult>;
   /** The folder the app was started with, once. */
   startupFolder(): Promise<string | null>;
   /** Folder picker. Resolves null if the person cancels. */

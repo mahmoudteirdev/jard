@@ -39,6 +39,11 @@ import app.jard.engine.AppRecency
 import app.jard.engine.AppUse
 import app.jard.engine.BatteryHistory
 import app.jard.engine.DayChargeStat
+import app.jard.engine.StorageHealth
+import app.jard.engine.StorageBenchResult
+import app.jard.engine.FlashWearInfo
+import app.jard.engine.GhostFiles
+import app.jard.engine.AndroidGhostFile
 import app.jard.engine.BenchResult
 import app.jard.engine.Device
 import app.jard.engine.Facts
@@ -452,5 +457,115 @@ fun WidgetsScreen(s: AppState) {
         }
         Btn("تشغيلها من الإعدادات", { s.page = Page.Settings }, Modifier.fillMaxWidth())
         LaunchedEffect(Unit) { JardWidget.refresh(context) }
+    }
+}
+
+@Composable
+fun StorageHealthScreen(s: AppState) {
+    val context = LocalContext.current
+    var wearInfo by remember { mutableStateOf<FlashWearInfo?>(null) }
+    var benchResult by remember { mutableStateOf<StorageBenchResult?>(null) }
+    var testing by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        kotlin.concurrent.thread {
+            wearInfo = StorageHealth.readFlashWear(context)
+        }
+    }
+
+    Page {
+        Head(s, "عمر شريحة الذاكرة")
+        T("فحص حقيقي للعتاد الداخلي", weight = FontWeight.Bold)
+        T("قراءة مباشرة لسجلات الشريحة من نواة لينكس، بدون نسب مئوية مخترعة.", color = Jard.colors.inkQuiet)
+
+        Card {
+            FactRow("نوع الشريحة", wearInfo?.type ?: "فلاش تخزين داخلي")
+            FactRow("نسبة استهلاك الخلايا", wearInfo?.wearPercentEst ?: "يقرأ…")
+            FactRow("حالة الكتل الاحتياطية", wearInfo?.preEolStatus ?: "طبيعي")
+        }
+
+        wearInfo?.let {
+            Note(if (I18n.english) it.explanationEn else it.explanationAr, if (it.supported) Jard.colors.statusGood else Jard.colors.statusWarn)
+        }
+
+        Spacer(Modifier.height(8.dp))
+        T("اختبار سرعة القراءة والكتابة الفعلية", weight = FontWeight.Bold)
+        Card {
+            FactRow("سرعة الكتابة", benchResult?.let { "%.1f MB/s".format(java.util.Locale.US, it.writeMbS) } ?: "—")
+            FactRow("سرعة القراءة", benchResult?.let { "%.1f MB/s".format(java.util.Locale.US, it.readMbS) } ?: "—")
+        }
+
+        Btn(if (testing) "يقيس السرعة الفعلية…" else if (benchResult != null) "إعادة قياس السرعة" else "بدء قياس سرعة التخزين", {
+            testing = true
+            kotlin.concurrent.thread {
+                val res = StorageHealth.benchmarkStorage(context, 16)
+                benchResult = res
+                testing = false
+            }
+        }, Modifier.fillMaxWidth(), enabled = !testing)
+        Muted("يكتب ملفاً مؤقتاً بحجم 16 MB ويقيس أداء الرقاقة بدقة ثم يمسحه فوراً.")
+    }
+}
+
+@Composable
+fun GhostFilesScreen(s: AppState) {
+    val context = LocalContext.current
+    var files by remember { mutableStateOf<List<AndroidGhostFile>?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var cleanMsg by remember { mutableStateOf<String?>(null) }
+
+    fun refresh() {
+        loading = true
+        cleanMsg = null
+        kotlin.concurrent.thread {
+            files = GhostFiles.scan(context, 30)
+            loading = false
+        }
+    }
+
+    LaunchedEffect(Unit) { refresh() }
+
+    Page {
+        Head(s, "الملفات المهجورة")
+        T("ملفات منسية استُخدمت لمرة واحدة", weight = FontWeight.Bold)
+        T("ملفات التثبيت (APK) والأرشيفات والمستندات المحملة منذ أكثر من شهر ولم تُفتح مجدداً.", color = Jard.colors.inkQuiet)
+
+        cleanMsg?.let { Note(it, Jard.colors.statusGood) }
+
+        if (loading) {
+            Card { T("جارٍ فحص التنزيلات عن الملفات المهجورة…", color = Jard.colors.inkQuiet) }
+        } else {
+            val list = files.orEmpty()
+            if (list.isEmpty()) {
+                Card { T("ما في ملفات مهجورة في التنزيلات.", color = Jard.colors.inkQuiet) }
+            } else {
+                val totalBytes = list.sumOf { it.size }
+                Card {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        T("إجمالي الملفات المهجورة: ${list.size}", weight = FontWeight.Bold)
+                        Num(sizeText(totalBytes), size = 16)
+                    }
+                }
+
+                for (f in list.take(30)) {
+                    Card {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Column(Modifier.weight(1f)) {
+                                T(f.name, weight = FontWeight.SemiBold)
+                                T("${f.category} · قبل ${f.daysStale} يوماً", style = JardType.label, color = Jard.colors.inkQuiet)
+                                T(sizeText(f.size), style = JardType.number, color = Jard.colors.accent)
+                            }
+                            Btn("حذف", {
+                                val ok = GhostFiles.cleanFile(context, f.file)
+                                if (ok) {
+                                    cleanMsg = "تم حذف ${f.name} بنجاح."
+                                    refresh()
+                                }
+                            })
+                        }
+                    }
+                }
+            }
+        }
     }
 }

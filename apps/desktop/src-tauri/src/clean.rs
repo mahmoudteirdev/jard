@@ -1,6 +1,7 @@
 //! Cleanup commands: what could go, moving it to quarantine, and bringing it back.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -537,4 +538,131 @@ pub(crate) fn data_folders(
         }
     }
     Ok(out)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct BatchCleanResult {
+    pub moved: Vec<String>,
+    pub failed: Vec<(String, String)>,
+    pub bytes_reclaimed: u64,
+}
+
+/// Scans given or default project directories for developer artifacts (node_modules, target, .venv, build, etc.)
+#[tauri::command]
+pub(crate) async fn scan_dev_bloat(roots: Option<Vec<PathBuf>>) -> Result<Vec<jard_scan::DevProject>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let roots = roots.unwrap_or_else(|| {
+            let mut list = Vec::new();
+            if let Some(user) = std::env::var_os("USERPROFILE").map(PathBuf::from) {
+                let code_sub = user.join("Coding");
+                if code_sub.is_dir() { list.push(code_sub); }
+                let src_sub = user.join("source");
+                if src_sub.is_dir() { list.push(src_sub); }
+                let proj_sub = user.join("Projects");
+                if proj_sub.is_dir() { list.push(proj_sub); }
+                let dev_sub = user.join("dev");
+                if dev_sub.is_dir() { list.push(dev_sub); }
+                list.push(user);
+            }
+            if cfg!(windows) {
+                for drive in b'C'..=b'Z' {
+                    let d = format!("{}:\\", drive as char);
+                    let p = PathBuf::from(&d);
+                    if p.is_dir() {
+                        let coding = p.join("Coding");
+                        if coding.is_dir() { list.push(coding); }
+                        let dev = p.join("dev");
+                        if dev.is_dir() { list.push(dev); }
+                    }
+                }
+            }
+            if list.is_empty() {
+                list.push(PathBuf::from("."));
+            }
+            list
+        });
+        Ok(jard_scan::scan_dev_projects(&roots, 5))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Scans given or default folders (Downloads, Desktop) for stale single-use downloads.
+#[tauri::command]
+pub(crate) async fn scan_ghost_files(
+    roots: Option<Vec<PathBuf>>,
+    min_days: Option<u32>,
+    min_size_mb: Option<u64>,
+) -> Result<Vec<jard_scan::GhostFile>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let roots = roots.unwrap_or_else(|| {
+            let mut list = Vec::new();
+            if let Some(user) = std::env::var_os("USERPROFILE").map(PathBuf::from) {
+                let dl = user.join("Downloads");
+                if dl.is_dir() { list.push(dl); }
+                let desk = user.join("Desktop");
+                if desk.is_dir() { list.push(desk); }
+            }
+            if list.is_empty() {
+                list.push(PathBuf::from("."));
+            }
+            list
+        });
+        let days = min_days.unwrap_or(30);
+        let min_bytes = min_size_mb.unwrap_or(1) * 1024 * 1024;
+        Ok(jard_scan::find_ghost_files(&roots, days, min_bytes))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Moves arbitrary file/folder paths to the 30-day quarantine. Protected paths are refused.
+#[tauri::command]
+pub(crate) async fn quarantine_paths(
+    store: State<'_, Arc<Store>>,
+    paths: Vec<PathBuf>,
+) -> Result<BatchCleanResult, String> {
+    let store = Arc::clone(&*store);
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut moved = Vec::new();
+        let mut failed = Vec::new();
+        let mut bytes_reclaimed = 0u64;
+
+        let requests: Vec<Request> = paths
+            .into_iter()
+            .filter_map(|p| {
+                let meta = match std::fs::metadata(&p) {
+                    Ok(m) => m,
+                    Err(e) => {
+                        failed.push((p.display().to_string(), e.to_string()));
+                        return None;
+                    }
+                };
+                let is_dir = meta.is_dir();
+                let apparent = meta.len();
+                Some(Request {
+                    path: p,
+                    is_dir,
+                    apparent,
+                    on_disk: apparent,
+                    files: 1,
+                })
+            })
+            .collect();
+
+        let outcomes = store.quarantine(&requests);
+        for o in outcomes {
+            if let Some(item) = o.item {
+                bytes_reclaimed += item.apparent;
+                moved.push(o.path);
+            } else if let Some(f) = o.failure {
+                failed.push((o.path, format!("{:?}", f)));
+            }
+        }
+
+        Ok(BatchCleanResult { moved, failed, bytes_reclaimed })
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }

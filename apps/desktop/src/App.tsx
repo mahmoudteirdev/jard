@@ -9,6 +9,8 @@ import { go, RAIL_ITEMS, useRoute, type RouteId } from "./routes";
 import { openSaved, useSession } from "./scan-session";
 import { AboutScreen, LicenseScreen, UpdatesQuestion } from "./screens/AboutScreens";
 import { CleanupScreen } from "./screens/CleanupScreen";
+import { DevCleanerScreen } from "./screens/DevCleanerScreen";
+import { GhostFilesScreen } from "./screens/GhostFilesScreen";
 import { CompareScreen } from "./screens/CompareScreen";
 import { DrivesScreen } from "./screens/DrivesScreen";
 import { FinderScreen } from "./screens/FinderScreen";
@@ -170,6 +172,10 @@ export function App() {
             <LicenseScreen />
           ) : route === "cleanup" ? (
             <CleanupScreen session={session} />
+          ) : route === "devcleaner" ? (
+            <DevCleanerScreen />
+          ) : route === "ghostfiles" ? (
+            <GhostFilesScreen />
           ) : route === "guard" ? (
             <GuardScreen />
           ) : route === "history" ? (

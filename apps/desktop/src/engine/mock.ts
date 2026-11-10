@@ -547,6 +547,83 @@ export const mockEngine: Engine = {
   async pickAnyFile() {
     return null;
   },
+  async scanDevBloat() {
+    return [
+      {
+        path: "D:\\Coding\\jard",
+        name: "jard",
+        kind: "Rust",
+        lastModified: Date.now() / 1000 - 86400 * 5,
+        daysInactive: 5,
+        status: "Active",
+        totalApparent: 420000000,
+        totalOnDisk: 450000000,
+        artifacts: [
+          {
+            name: "target",
+            path: "D:\\Coding\\jard\\target",
+            apparent: 420000000,
+            onDisk: 450000000,
+            files: 3400,
+            cleanCmd: "cargo clean",
+            reinstallCmd: "cargo build",
+          },
+        ],
+      },
+      {
+        path: "D:\\Coding\\old-react-web",
+        name: "old-react-web",
+        kind: "Node",
+        lastModified: Date.now() / 1000 - 86400 * 120,
+        daysInactive: 120,
+        status: "Abandoned",
+        totalApparent: 780000000,
+        totalOnDisk: 850000000,
+        artifacts: [
+          {
+            name: "node_modules",
+            path: "D:\\Coding\\old-react-web\\node_modules",
+            apparent: 780000000,
+            onDisk: 850000000,
+            files: 25400,
+            cleanCmd: "npm prune",
+            reinstallCmd: "npm install",
+          },
+        ],
+      },
+    ];
+  },
+  async scanGhostFiles() {
+    return [
+      {
+        path: "C:\\Users\\User\\Downloads\\ubuntu-22.04.iso",
+        name: "ubuntu-22.04.iso",
+        size: 3800000000,
+        created: Date.now() / 1000 - 86400 * 95,
+        lastAccessed: Date.now() / 1000 - 86400 * 95,
+        daysStale: 95,
+        category: "DiskImage",
+        reason: "تم تنزيله قبل 95 يوماً ولم يُفتح مجدداً منذ تاريخ تنزيله",
+      },
+      {
+        path: "C:\\Users\\User\\Downloads\\NodeJS-Setup.exe",
+        name: "NodeJS-Setup.exe",
+        size: 35000000,
+        created: Date.now() / 1000 - 86400 * 60,
+        lastAccessed: Date.now() / 1000 - 86400 * 60,
+        daysStale: 60,
+        category: "Installer",
+        reason: "تم تنزيله قبل 60 يوماً ولم يُفتح مجدداً منذ تاريخ تنزيله",
+      },
+    ];
+  },
+  async quarantinePaths(paths) {
+    return {
+      moved: paths,
+      failed: [],
+      bytesReclaimed: 1024 * 1024 * 50,
+    };
+  },
   async startupFolder() {
     return null;
   },

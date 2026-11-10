@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 export type RouteId =
   | "overview" | "storage" | "finder" | "compare" | "drives"
-  | "cleanup" | "programs" | "history"
+  | "cleanup" | "devcleaner" | "ghostfiles" | "programs" | "history"
   | "health" | "tests" | "reports"
   | "security" | "settings"
   | "scan" | "guard" | "about" | "license" | "whyslow" | "truth";
@@ -18,6 +18,8 @@ const I = {
   overview: "M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z",
   storage: "M3 3h11v18H3zM14 3h7v8h-7zM14 11h7v10h-7z",
   cleanup: "M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14",
+  devcleaner: "M16 18l6-6-6-6M8 6l-6 6 6 6M14 4l-4 16",
+  ghostfiles: "M9 22h6c5 0 7-2 7-7V9c0-5-2-7-7-7H9C4 2 2 4 2 9v6c0 5 2 7 7 7zM9 10h.01M15 10h.01M8 16c1.5-1 3.5-1 5 0",
   finder: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4",
   compare: "M5 21V10M12 21V3M19 21v-7",
   drives: "M3 5h18v6H3zM3 13h18v6H3zM7 8h.01M7 16h.01",
@@ -39,7 +41,7 @@ export const RAIL_END = item("settings", "الإعدادات");
 /** The 4 groups named in the step-3 review. Which item goes where is our call: the review names only the groups. */
 export const RAIL_GROUPS: { name: string; items: RailItem[] }[] = [
   { name: "المساحة", items: [item("storage", "التخزين"), item("finder", "البحث"), item("compare", "المقارنة"), item("drives", "الأقراص")] },
-  { name: "التنظيف", items: [item("cleanup", "التنظيف"), item("programs", "البرامج"), item("history", "السجل")] },
+  { name: "التنظيف", items: [item("cleanup", "التنظيف"), item("devcleaner", "مخلفات التطوير"), item("ghostfiles", "الملفات المهجورة"), item("programs", "البرامج"), item("history", "السجل")] },
   { name: "الجهاز", items: [item("health", "صحة الجهاز"), item("tests", "الاختبارات"), item("reports", "التقارير")] },
   { name: "الأمان", items: [item("security", "الأمان")] },
 ];

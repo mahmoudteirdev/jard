@@ -19,7 +19,9 @@
 //! }
 //! ```
 
+pub mod dev;
 pub mod drives;
+pub mod ghost;
 #[cfg(windows)]
 pub mod mft;
 mod duplicates;
@@ -39,6 +41,8 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 
 pub use duplicates::{find_duplicates, DuplicateGroup};
+pub use dev::{scan_dev_projects, DevArtifact, DevProject};
+pub use ghost::{find_ghost_files, GhostFile};
 pub use similar::{find_similar, SimilarGroup, SimilarPhoto};
 pub use truth::TruthFacts;
 pub use kinds::{kind_totals, Kind, KindTotal, Query};

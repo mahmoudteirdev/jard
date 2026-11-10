@@ -116,6 +116,9 @@ export const tauriEngine: Engine = {
     const picked = await open({ multiple: false, title: "اختر ملفاً" });
     return typeof picked === "string" ? picked : null;
   },
+  scanDevBloat: (roots) => invoke("scan_dev_bloat", { roots }),
+  scanGhostFiles: (roots, minDays, minSizeMb) => invoke("scan_ghost_files", { roots, minDays, minSizeMb }),
+  quarantinePaths: (paths) => invoke("quarantine_paths", { paths }),
   startupFolder: () => invoke<string | null>("startup_folder"),
   pickFolder: async () => {
     const picked = await open({ directory: true, multiple: false, title: "اختر مجلداً لفحصه" });

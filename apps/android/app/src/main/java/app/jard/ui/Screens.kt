@@ -531,10 +531,10 @@ fun MoreScreen(s: AppState) {
         Title("المزيد")
         GuestBanner(s)
         val groups = listOf(
-            "التشخيص" to listOf("ليش هاتفي بطيء؟" to Page.Slow, "معلومات الجهاز" to Page.Device, "البطارية" to Page.Battery, "السرعة والشاشة" to Page.Bench, "تقرير الهاتف المستعمل" to Page.Used),
+            "التشخيص" to listOf("ليش هاتفي بطيء؟" to Page.Slow, "معلومات الجهاز" to Page.Device, "عمر شريحة الذاكرة" to Page.StorageHealth, "البطارية" to Page.Battery, "السرعة والشاشة" to Page.Bench, "تقرير الهاتف المستعمل" to Page.Used),
             "الأمان" to listOf("الصلاحيات والتطبيقات" to Page.Security, "الشبكة واستهلاك الإنترنت" to Page.Network),
             "للمحترفين" to listOf("أدوات الخبير والروت" to Page.Expert, "ربط الجهاز (Shizuku / روت)" to Page.Access, "سجل الأجهزة للمحلات" to Page.ShopLog),
-            "الإدارة" to listOf("السجل والحجر المؤقت" to Page.History, "شو كبر من آخر فحص" to Page.Compare, "الوصول إلى الملفات" to Page.Permission, "الإعدادات" to Page.Settings, "الويدجت والإشعارات" to Page.Widgets, "جَرد Pro" to Page.Pro, "حول جَرد" to Page.About),
+            "الإدارة" to listOf("الملفات المهجورة" to Page.GhostFiles, "السجل والحجر المؤقت" to Page.History, "شو كبر من آخر فحص" to Page.Compare, "الوصول إلى الملفات" to Page.Permission, "الإعدادات" to Page.Settings, "الويدجت والإشعارات" to Page.Widgets, "جَرد Pro" to Page.Pro, "حول جَرد" to Page.About),
         )
         for ((group, items) in groups) {
             T(group, style = JardType.label, color = Jard.colors.inkMuted)
