@@ -682,6 +682,21 @@ export const mockEngine: Engine = {
       burnVelocityMbPerDay: 450.0,
     };
   },
+  async runAgentCommand(command: string) {
+    return { exitCode: 0, stdout: `Mock executed: ${command}`, stderr: "" };
+  },
+  async writeAgentFile(_path: string, _content: string) {},
+  async readAgentFile(_path: string) {
+    return "// Mock file content";
+  },
+  async listAgentDir(_path: string) {
+    return [
+      { name: "Documents", path: "C:\\Users\\Mock\\Documents", isDir: true, size: 4096 },
+      { name: "Downloads", path: "C:\\Users\\Mock\\Downloads", isDir: true, size: 8192 },
+      { name: "index.html", path: "C:\\Users\\Mock\\index.html", isDir: false, size: 1024 },
+    ];
+  },
+  async moveAgentFile(_from: string, _to: string) {},
   async startupFolder() {
     return null;
   },

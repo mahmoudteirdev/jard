@@ -20,6 +20,7 @@ export interface Settings {
   /** Fingerprint lookups on VirusTotal: off until turned on, and needs the person's own key. */
   virustotal: boolean;
   virustotalKey: string;
+  geminiApiKey: string;
   language: Language;
   /** Simple hides the technical numbers and screens. Everything still works the same. */
   level: "simple" | "expert";
@@ -28,7 +29,7 @@ export interface Settings {
 }
 
 const KEY = "jard.settings";
-const DEFAULTS: Settings = { theme: "dark", unit: "GB", dedupHardlinks: false, fastMft: true, keepResults: true, checkUpdates: null, virustotal: false, virustotalKey: "", language: "ar", level: "expert", excluded: [] };
+const DEFAULTS: Settings = { theme: "dark", unit: "GB", dedupHardlinks: false, fastMft: true, keepResults: true, checkUpdates: null, virustotal: false, virustotalKey: "", geminiApiKey: "", language: "ar", level: "expert", excluded: [] };
 
 function load(): Settings {
   try {

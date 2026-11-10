@@ -150,6 +150,19 @@ fun HomeScreen(s: AppState, resumed: Int) {
                 Btn("تفاصيل", { s.page = Page.PredictiveStorage })
             }
         }
+        Card {
+            Row(
+                Modifier.fillMaxWidth().clickable { s.page = Page.Agent },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    T("الوكيل الذكي (Termux & Root) 🤖", weight = FontWeight.Bold)
+                    T("مساعد Gemini لتثبيت البرمجيات، تشغيل أوامر لينكس، وإنشاء المواقع", style = JardType.label, color = Jard.colors.inkQuiet)
+                }
+                Btn("فتح الوكيل", { s.page = Page.Agent }, kind = BtnKind.Primary)
+            }
+        }
         if (s.scanError != null) Note(s.scanError!!, Jard.colors.statusSerious)
         if (tree == null && layers.isEmpty()) {
             T("افحص جهازك لتعرف أين ذهبت المساحة. نقرأ أسماء الملفات وأحجامها فقط، والتطبيق ما عنده صلاحية إنترنت أصلاً.", color = Jard.colors.inkQuiet)
@@ -562,7 +575,7 @@ fun MoreScreen(s: AppState) {
         val groups = listOf(
             "التشخيص" to listOf("ليش هاتفي بطيء؟" to Page.Slow, "معلومات الجهاز" to Page.Device, "عمر شريحة الذاكرة" to Page.StorageHealth, "توقع نفاد المساحة (AI)" to Page.PredictiveStorage, "البطارية" to Page.Battery, "السرعة والشاشة" to Page.Bench, "تقرير الهاتف المستعمل" to Page.Used),
             "الأمان" to listOf("الصلاحيات والتطبيقات" to Page.Security, "الشبكة واستهلاك الإنترنت" to Page.Network),
-            "للمحترفين" to listOf("أدوات الخبير والروت" to Page.Expert, "ربط الجهاز (Shizuku / روت)" to Page.Access, "سجل الأجهزة للمحلات" to Page.ShopLog),
+            "للمحترفين" to listOf("الوكيل الذكي (Termux & Root)" to Page.Agent, "أدوات الخبير والروت" to Page.Expert, "ربط الجهاز (Shizuku / روت)" to Page.Access, "سجل الأجهزة للمحلات" to Page.ShopLog),
             "الإدارة" to listOf("الملفات المهجورة" to Page.GhostFiles, "البحث باللغة الطبيعية (AI)" to Page.AiQuery, "السجل والحجر المؤقت" to Page.History, "شو كبر من آخر فحص" to Page.Compare, "الوصول إلى الملفات" to Page.Permission, "الإعدادات" to Page.Settings, "الويدجت والإشعارات" to Page.Widgets, "جَرد Pro" to Page.Pro, "حول جَرد" to Page.About),
         )
         for ((group, items) in groups) {
@@ -655,6 +668,9 @@ fun SettingsScreen(s: AppState) {
         Toggle(s.keepResults, "احفظ نتيجة آخر فحص", "تُحفظ أسماء الملفات وأحجامها على هذا الهاتف فقط، لتفتح بدون فحص جديد.") { s.changeKeepResults(it) }
         LinkRow(if (s.rootOn) "صلاحية الروت مفعّلة" else "صلاحية الروت غير مفعّلة") { s.page = Page.Access }
         LinkRow("مراجعة الصلاحيات") { s.page = Page.Onboard }
+        T("الذكاء الاصطناعي (Google Gemini)", weight = FontWeight.Bold)
+        T("يستخدم وكيل جَرد نموذج Gemini 2.0 Flash لتنفيذ الأوامر وتكامل Termux والروت.", color = Jard.colors.inkQuiet)
+        LinkRow("إعدادات الوكيل ومفتاح Gemini") { s.page = Page.Agent }
     }
 }
 

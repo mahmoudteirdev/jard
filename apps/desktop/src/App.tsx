@@ -8,6 +8,7 @@ import { engine, type Drive } from "./engine";
 import { go, RAIL_ITEMS, useRoute, type RouteId } from "./routes";
 import { openSaved, useSession } from "./scan-session";
 import { AboutScreen, LicenseScreen, UpdatesQuestion } from "./screens/AboutScreens";
+import { AgentScreen } from "./screens/AgentScreen";
 import { CleanupScreen } from "./screens/CleanupScreen";
 import { DevCleanerScreen } from "./screens/DevCleanerScreen";
 import { GhostFilesScreen } from "./screens/GhostFilesScreen";
@@ -180,6 +181,8 @@ export function App() {
             <GuardScreen />
           ) : route === "history" ? (
             <HistoryScreen />
+          ) : route === "agent" ? (
+            <AgentScreen />
           ) : route === "settings" ? (
             <SettingsScreen />
           ) : (

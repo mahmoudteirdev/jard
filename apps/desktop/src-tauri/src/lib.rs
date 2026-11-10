@@ -4,6 +4,7 @@
 //! File operations take node ids, not paths, so the UI can only act on what a scan found.
 
 mod about;
+mod agent;
 mod ai;
 mod elevate;
 mod integration;
@@ -453,7 +454,12 @@ pub fn run() {
             tools::disk_partitions,
             ai::parse_natural_query,
             ai::search_natural_query,
-            ai::predict_storage_depletion
+            ai::predict_storage_depletion,
+            agent::run_agent_command,
+            agent::write_agent_file,
+            agent::read_agent_file,
+            agent::list_agent_dir,
+            agent::move_agent_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running Jard");

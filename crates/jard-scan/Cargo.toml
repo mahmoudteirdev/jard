@@ -1,6 +1,6 @@
 [package]
 name = "jard-scan"
-version = "0.1.3"
+version = "0.1.4"
 description = "Jard disk scan engine: parallel walker that builds a flat size tree (apparent, on disk, cloud, hardlinks)."
 edition.workspace = true
 license.workspace = true

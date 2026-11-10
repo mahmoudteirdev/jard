@@ -30,7 +30,7 @@ enum class Page {
     None, Onboard, Permission, Scan, ScanLost, Result, History, Settings, About, Clean, Explain,
     Slow, Device, Battery, Bench, Pixels, Used, Security, Network, Compare, Widgets,
     Access, Root, Expert, Pro, Key, Guest, ShopLog, ShopReport, ShopSetup, ShopCompare, Test,
-    StorageHealth, GhostFiles, AiQuery, PredictiveStorage,
+    StorageHealth, GhostFiles, AiQuery, PredictiveStorage, Agent,
 }
 
 /** Where "back" leads. Anything not here goes back to the tabs. */
@@ -65,6 +65,12 @@ class AppState(private val context: Context) {
     var shopName by mutableStateOf(prefs.getString("shopName", "").orEmpty())
     var proKey by mutableStateOf<String?>(null)
     var rootOn by mutableStateOf(prefs.getBoolean("root", false))
+    var geminiApiKey by mutableStateOf(prefs.getString("gemini_api_key", "").orEmpty())
+
+    fun saveGeminiApiKey(key: String) {
+        geminiApiKey = key.trim()
+        prefs.edit().putString("gemini_api_key", geminiApiKey).apply()
+    }
 
     /** What the Explain, Test and ShopReport pages are showing. */
     var explaining by mutableStateOf<FileNode?>(null)

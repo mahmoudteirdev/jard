@@ -545,6 +545,11 @@ export interface Engine {
   parseNaturalQuery(prompt: string): Promise<ParsedAiQuery>;
   searchNaturalQuery(scanId: ScanId, prompt: string): Promise<AiSearchResponse>;
   predictStorageDepletion(driveRoot?: string): Promise<DepletionForecast>;
+  runAgentCommand(command: string): Promise<AgentCommandOutput>;
+  writeAgentFile(path: string, content: string): Promise<void>;
+  readAgentFile(path: string): Promise<string>;
+  listAgentDir(path: string): Promise<AgentDirEntry[]>;
+  moveAgentFile(from: string, to: string): Promise<void>;
   /** The folder the app was started with, once. */
   startupFolder(): Promise<string | null>;
   /** Folder picker. Resolves null if the person cancels. */
@@ -553,6 +558,19 @@ export interface Engine {
   pickSavePath(defaultName: string, extension?: "json" | "csv" | "txt"): Promise<string | null>;
   onProgress(scanId: ScanId, cb: (p: Progress) => void): Promise<Unlisten>;
   onDone(scanId: ScanId, cb: (d: Done) => void): Promise<Unlisten>;
+}
+
+export interface AgentCommandOutput {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}
+
+export interface AgentDirEntry {
+  name: string;
+  path: string;
+  isDir: boolean;
+  size: number;
 }
 
 /** Node.flags bits. Same values as jard_scan::flags. */

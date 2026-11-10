@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 export type RouteId =
   | "overview" | "storage" | "finder" | "compare" | "drives"
+  | "agent"
   | "cleanup" | "devcleaner" | "ghostfiles" | "programs" | "history"
   | "health" | "tests" | "reports"
   | "security" | "settings"
@@ -29,6 +30,7 @@ const I = {
   security: "M12 3l8 3v6c0 4-3 7-8 9-5-2-8-5-8-9V6z",
   reports: "M6 3h9l4 4v14H6zM9 12h6M9 16h6",
   history: "M12 3a9 9 0 1 0 9 9M12 7v5l3 2M21 3v5h-5",
+  agent: "M12 2a2 2 0 0 1 2 2v1h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h3V4a2 2 0 0 1 2-2zm-3 9a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-5 6h4",
   settings: "M4 7h10M18 7h2M4 17h2M10 17h10M16 5v4M8 15v4",
 };
 
@@ -41,6 +43,7 @@ export const RAIL_END = item("settings", "الإعدادات");
 /** The 4 groups named in the step-3 review. Which item goes where is our call: the review names only the groups. */
 export const RAIL_GROUPS: { name: string; items: RailItem[] }[] = [
   { name: "المساحة", items: [item("storage", "التخزين"), item("finder", "البحث"), item("compare", "المقارنة"), item("drives", "الأقراص")] },
+  { name: "الذكاء الاصطناعي", items: [item("agent", "الوكيل الذكي")] },
   { name: "التنظيف", items: [item("cleanup", "التنظيف"), item("devcleaner", "مخلفات التطوير"), item("ghostfiles", "الملفات المهجورة"), item("programs", "البرامج"), item("history", "السجل")] },
   { name: "الجهاز", items: [item("health", "صحة الجهاز"), item("tests", "الاختبارات"), item("reports", "التقارير")] },
   { name: "الأمان", items: [item("security", "الأمان")] },

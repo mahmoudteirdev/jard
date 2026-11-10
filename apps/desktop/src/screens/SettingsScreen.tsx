@@ -121,6 +121,34 @@ export function SettingsScreen() {
             <button type="button" className="btn" onClick={() => void addExcluded()}>إضافة مجلد</button>
           </div>
         </fieldset>
+
+        <fieldset>
+          <legend>الذكاء الاصطناعي (Google Gemini)</legend>
+          <p className="muted small" style={{ margin: "4px 0 10px 0" }}>
+            يستخدم وكيل جَرد الذكي نموذج Gemini 2.0 Flash لتنظيم الملفات، إدارة بيئة التطوير، وإنشاء المواقع بأمان تام.
+          </p>
+          <label className="choice" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span>مفتاح Gemini API:</span>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input
+                type="password"
+                placeholder="ألصق مفتاح AI Studio هنا..."
+                value={s.geminiApiKey}
+                onChange={(e) => updateSettings({ geminiApiKey: e.target.value.trim() })}
+                style={{ flex: "1 1 280px", padding: "6px 10px", background: "var(--surface)", border: "1px solid var(--line)" }}
+              />
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noreferrer"
+                className="btn"
+                style={{ textDecoration: "none" }}
+              >
+                احصل على مفتاح مجاني ↗
+              </a>
+            </div>
+          </label>
+        </fieldset>
         <fieldset>
           <legend>التكامل مع ويندوز</legend>
           {portable ? (
