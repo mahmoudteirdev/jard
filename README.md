@@ -35,7 +35,7 @@ promises:
   - Three numbers per folder: apparent size, size on disk, and what isn't counted
   - No invented "health scores": readings as the system reports them
   - Android has no internet permission, so it can't send anything anywhere
-status: Version 0.1.5 (Safe Root Cache Cleaner & Google Gemini 2.0 AI Agent)
+status: Version 0.1.6 (Gemini 3.5 Auto-Fallback AI Agent & Safe Cache Cleaner)
 ```
 
 ## Download

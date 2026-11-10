@@ -91,73 +91,106 @@ object GeminiAgent {
         return JSONArray().put(JSONObject().put("functionDeclarations", funcs))
     }
 
+    private val CANDIDATE_MODELS = listOf(
+        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3-flash-preview",
+        "gemini-3.8-flash",
+        "gemini-flash-latest"
+    )
+
     suspend fun query(apiKey: String, history: List<Pair<String, String>>): Result<AgentResponse> = withContext(Dispatchers.IO) {
-        runCatching {
-            val url = URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey.trim()}")
-            val conn = url.openConnection() as HttpURLConnection
-            conn.requestMethod = "POST"
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.doOutput = true
-            conn.connectTimeout = 15000
-            conn.readTimeout = 30000
-
-            val contentsArray = JSONArray()
-            for ((role, text) in history) {
-                contentsArray.put(JSONObject().apply {
-                    put("role", if (role == "user") "user" else "model")
-                    put("parts", JSONArray().put(JSONObject().put("text", text)))
-                })
-            }
-
-            val requestBody = JSONObject().apply {
-                put("system_instruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", SYSTEM_INSTRUCTION))))
-                put("contents", contentsArray)
-                put("tools", toolsJson())
-            }
-
-            OutputStreamWriter(conn.outputStream).use { it.write(requestBody.toString()) }
-
-            val code = conn.responseCode
-            if (code != 200) {
-                val errorStream = conn.errorStream?.let { BufferedReader(InputStreamReader(it)).readText() } ?: "HTTP $code"
-                throw Exception("خطأ من Gemini ($code): $errorStream")
-            }
-
-            val responseText = BufferedReader(InputStreamReader(conn.inputStream)).readText()
-            val json = JSONObject(responseText)
-            val candidate = json.optJSONArray("candidates")?.optJSONObject(0)
-                ?: throw Exception("لم يصل رد صالح من Gemini.")
-
-            val parts = candidate.optJSONObject("content")?.optJSONArray("parts") ?: JSONArray()
-            var text = ""
-            val toolCalls = mutableListOf<ToolCall>()
-
-            for (i in 0 until parts.length()) {
-                val part = parts.getJSONObject(i)
-                if (part.has("text")) {
-                    text += part.getString("text")
-                }
-                if (part.has("functionCall")) {
-                    val fc = part.getJSONObject("functionCall")
-                    val name = fc.getString("name")
-                    val argsObj = fc.optJSONObject("args") ?: JSONObject()
-                    val argsMap = mutableMapOf<String, Any>()
-                    val keys = argsObj.keys()
-                    while (keys.hasNext()) {
-                        val k = keys.next()
-                        argsMap[k] = argsObj.get(k)
-                    }
-                    val explanation = argsMap["explanation"] as? String ?: "تشغيل $name"
-                    toolCalls.add(ToolCall(
-                        id = (1..6).map { ('a'..'z').random() }.joinToString(""),
-                        name = name,
-                        args = argsMap,
-                        explanation = explanation
-                    ))
-                }
-            }
-
-            AgentResponse(text, toolCalls)
+        val cleanKey = apiKey.trim()
+        if (cleanKey.isEmpty()) {
+            return@withContext Result.failure(Exception("مفتاح API غير موجود. يرجى إدخال مفتاح Gemini في الإعدادات."))
         }
+
+        val contentsArray = JSONArray()
+        for ((role, text) in history) {
+            contentsArray.put(JSONObject().apply {
+                put("role", if (role == "user") "user" else "model")
+                put("parts", JSONArray().put(JSONObject().put("text", text)))
+            })
+        }
+
+        val requestBody = JSONObject().apply {
+            put("system_instruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", SYSTEM_INSTRUCTION))))
+            put("contents", contentsArray)
+            put("tools", toolsJson())
+        }
+        val requestJsonString = requestBody.toString()
+
+        var lastError = ""
+
+        for (model in CANDIDATE_MODELS) {
+            try {
+                val url = URL("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$cleanKey")
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json")
+                conn.doOutput = true
+                conn.connectTimeout = 15000
+                conn.readTimeout = 30000
+
+                OutputStreamWriter(conn.outputStream).use { it.write(requestJsonString) }
+
+                val code = conn.responseCode
+                if (code == 404 || code == 503) {
+                    val errText = conn.errorStream?.let { BufferedReader(InputStreamReader(it)).readText() } ?: "HTTP $code"
+                    lastError = "Gemini $model ($code): $errText"
+                    continue
+                }
+
+                if (code != 200) {
+                    val errorStream = conn.errorStream?.let { BufferedReader(InputStreamReader(it)).readText() } ?: "HTTP $code"
+                    if ("API_KEY_INVALID" in errorStream || "PERMISSION_DENIED" in errorStream) {
+                        return@withContext Result.failure(Exception("مفتاح API غير صالح أو غير مفعل في Google AI Studio."))
+                    }
+                    throw Exception("خطأ من Gemini ($code): $errorStream")
+                }
+
+                val responseText = BufferedReader(InputStreamReader(conn.inputStream)).readText()
+                val json = JSONObject(responseText)
+                val candidate = json.optJSONArray("candidates")?.optJSONObject(0) ?: continue
+
+                val parts = candidate.optJSONObject("content")?.optJSONArray("parts") ?: JSONArray()
+                var text = ""
+                val toolCalls = mutableListOf<ToolCall>()
+
+                for (i in 0 until parts.length()) {
+                    val part = parts.getJSONObject(i)
+                    if (part.has("text")) {
+                        text += part.getString("text")
+                    }
+                    if (part.has("functionCall")) {
+                        val fc = part.getJSONObject("functionCall")
+                        val name = fc.getString("name")
+                        val argsObj = fc.optJSONObject("args") ?: JSONObject()
+                        val argsMap = mutableMapOf<String, Any>()
+                        val keys = argsObj.keys()
+                        while (keys.hasNext()) {
+                            val k = keys.next()
+                            argsMap[k] = argsObj.get(k)
+                        }
+                        val explanation = argsMap["explanation"] as? String ?: "تشغيل $name"
+                        toolCalls.add(ToolCall(
+                            id = (1..6).map { ('a'..'z').random() }.joinToString(""),
+                            name = name,
+                            args = argsMap,
+                            explanation = explanation
+                        ))
+                    }
+                }
+
+                return@withContext Result.success(AgentResponse(text, toolCalls))
+            } catch (e: Exception) {
+                lastError = e.message ?: e.toString()
+                if ("مفتاح API غير صالح" in lastError) {
+                    return@withContext Result.failure(e)
+                }
+            }
+        }
+
+        Result.failure(Exception("تعذر الاتصال بخوادم Gemini: $lastError"))
     }
 }

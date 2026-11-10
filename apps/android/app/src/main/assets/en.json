@@ -903,5 +903,9 @@
  "⚡ تثبيت Node بـ Termux": "⚡ Install Node in Termux",
  "⚡ تحليل الذكاء الاصطناعي الفوري:": "⚡ Instant AI Analysis:",
  "🌐 إنشاء موقع محلي": "🌐 Create local site",
- "🐧 أمر Termux Linux": "🐧 Termux Linux command"
+ "🐧 أمر Termux Linux": "🐧 Termux Linux command",
+ "تعذر الاتصال بخوادم Gemini: {}": "Could not connect to Gemini servers: {}",
+ "مفتاح API غير صالح": "Invalid API key",
+ "مفتاح API غير صالح أو غير مفعل في Google AI Studio.": "API key is invalid or not enabled in Google AI Studio.",
+ "مفتاح API غير موجود. يرجى إدخال مفتاح Gemini في الإعدادات.": "API key missing. Please enter your Gemini API key in Settings."
 }
