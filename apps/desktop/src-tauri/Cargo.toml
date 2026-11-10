@@ -1,6 +1,6 @@
 [package]
 name = "jard-desktop"
-version = "0.1.0"
+version = "0.1.1"
 description = "Jard desktop app (Tauri shell around jard-scan)"
 edition.workspace = true
 license.workspace = true

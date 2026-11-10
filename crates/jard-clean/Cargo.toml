@@ -1,6 +1,6 @@
 [package]
 name = "jard-clean"
-version = "0.1.0"
+version = "0.1.1"
 description = "Jard quarantine: moves files aside for 30 days with undo, and refuses protected system paths."
 edition.workspace = true
 license.workspace = true
