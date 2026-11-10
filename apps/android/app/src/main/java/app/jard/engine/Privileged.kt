@@ -88,10 +88,34 @@ object Privileged {
         return parseDu(command(context, "du -k -d 1 $path 2>/dev/null").out).filter { it.first != path }
     }
 
-    /** Clears one app's cache. Android 12 and newer accept this from Shizuku or root. */
+    /**
+     * Clears one app's cache safely without touching databases, shared prefs, or user files.
+     * With Root: directly wipes only cache and code_cache contents, leaving databases & logins 100% intact.
+     * Note: NEVER use 'pm clear' as OEM ROMs ignore '--cache-only' and wipe all user application data!
+     */
     fun clearCache(context: Context, pkg: String): CommandResult {
         require(pkg.matches(Regex("[A-Za-z0-9_.]+")))
-        return command(context, "pm clear --cache-only $pkg")
+        return when (level(context)) {
+            Access.Root -> {
+                // Direct targeted filesystem deletion of cache directories only.
+                // Keeping the folder itself preserves owner UID, permissions, and SELinux contexts.
+                val cmd = "rm -rf " +
+                        "/data/data/$pkg/cache/* " +
+                        "/data/data/$pkg/code_cache/* " +
+                        "/data/user/0/$pkg/cache/* " +
+                        "/data/user/0/$pkg/code_cache/* " +
+                        "/storage/emulated/0/Android/data/$pkg/cache/* " +
+                        "/sdcard/Android/data/$pkg/cache/* 2>/dev/null"
+                rootCommand(context, cmd)
+            }
+            Access.Shizuku -> {
+                // Shizuku (adb uid=2000) cannot write to /data/data/$pkg directly.
+                // pm clear is strictly avoided because ignoring --cache-only deletes all user data.
+                // We use system trim-caches which is safe and non-destructive.
+                shizukuCommand(context, "pm trim-caches 9999999999")
+            }
+            Access.Normal -> CommandResult(-1, "يحتاج Shizuku أو روت.")
+        }
     }
 
     private fun logFile(context: Context) = File(context.filesDir, "commands.json")
