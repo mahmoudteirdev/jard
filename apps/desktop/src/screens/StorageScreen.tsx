@@ -311,6 +311,71 @@ function Results({ session }: { session: Session }) {
   const [detailPath, setDetailPath] = useState("");
   const [notice, setNotice] = useState<{ kind: "info" | "error"; text: string } | null>(null);
 
+  // Splitter & Layout state
+  const [splitRatio, setSplitRatio] = useState<number>(() => {
+    try {
+      const v = localStorage.getItem("jard.storage.splitRatio");
+      return v ? Math.max(20, Math.min(80, Number(v))) : 48;
+    } catch {
+      return 48;
+    }
+  });
+  const [splitMode, setSplitMode] = useState<"split" | "tree-only" | "map-only">("split");
+  const [isDragging, setIsDragging] = useState(false);
+  const panesRef = useRef<HTMLDivElement>(null);
+
+  // Map depth & nested items
+  const [mapDepth, setMapDepth] = useState<number>(2);
+  const [nestedKids, setNestedKids] = useState<Map<number, NodeDto[]>>(new Map());
+
+  // Split drag handler
+  const startDrag = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    const onMove = (ev: MouseEvent) => {
+      if (!panesRef.current) return;
+      const rect = panesRef.current.getBoundingClientRect();
+      const rtl = document.documentElement.dir === "rtl";
+      const fraction = rtl
+        ? (rect.right - ev.clientX) / rect.width
+        : (ev.clientX - rect.left) / rect.width;
+      const p = Math.max(20, Math.min(80, Math.round(fraction * 100)));
+      setSplitRatio(p);
+      try {
+        localStorage.setItem("jard.storage.splitRatio", String(p));
+      } catch {}
+    };
+    const onUp = () => {
+      setIsDragging(false);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  // Fetch nested children for treemap when mapDepth >= 2
+  useEffect(() => {
+    if (mapDepth <= 1 || !mapKids.length) {
+      setNestedKids(new Map());
+      return;
+    }
+    let live = true;
+    const dirs = mapKids.filter((n) => n.isDir && n.childCount > 0).slice(0, 10);
+    const mapSort: SortKey = sort === "apparent" ? "apparent" : "on_disk";
+    Promise.all(
+      dirs.map(async (d) => {
+        const kids = await engine.getChildren(scanId, d.id, mapSort, 12).catch(() => []);
+        return [d.id, kids] as const;
+      }),
+    ).then((entries) => {
+      if (live) setNestedKids(new Map(entries));
+    });
+    return () => {
+      live = false;
+    };
+  }, [scanId, mapKids, mapDepth, sort, version]);
+
   const folder = chain[chain.length - 1];
   const root = chain[0];
   // For the window-wide key handler, which is only set up once.
@@ -409,12 +474,30 @@ function Results({ session }: { session: Session }) {
   const mapItems: MapItem[] = useMemo(() => {
     if (!folder) return [];
     const top = mapKids.slice(0, MAP_ITEMS);
-    const items: MapItem[] = top.map((n) => ({ node: n, name: n.name, value: metric(n), color: n.isDir ? KIND_COLOR.dir : KIND_COLOR.file }));
+    const items: MapItem[] = top.map((n) => {
+      const sub = nestedKids.get(n.id);
+      const children: MapItem[] | undefined =
+        sub && sub.length > 0
+          ? sub.map((c) => ({
+              node: c,
+              name: c.name,
+              value: metric(c),
+              color: c.isDir ? KIND_COLOR.dir : KIND_COLOR.file,
+            }))
+          : undefined;
+      return {
+        node: n,
+        name: n.name,
+        value: metric(n),
+        color: n.isDir ? KIND_COLOR.dir : KIND_COLOR.file,
+        children,
+      };
+    });
     const rest = metric(folder) - top.reduce((s, n) => s + metric(n), 0);
     const hidden = folder.childCount - top.length;
     if (hidden > 0 && rest > 0) items.push({ node: null, name: `${num(hidden)} عنصراً أصغر`, value: rest, color: KIND_COLOR.others });
     return items;
-  }, [mapKids, folder, sort]);
+  }, [mapKids, folder, sort, nestedKids]);
 
   if (!folder || !root) return <p className="muted" role="status">يحمّل…</p>;
 
@@ -496,51 +579,147 @@ function Results({ session }: { session: Session }) {
       {session.drive && folder.id === root.id && <DriveUsage root={root} drive={session.drive} unit={unit} dedup={session.dedup} />}
       {folder.id === root.id && <KindBar scanId={scanId} version={version} unit={unit} />}
 
-      <div className="panes">
-        <section className="list card" aria-labelledby="list-title">
-          <div className="list-head">
-            <h2 id="list-title" className="label muted">المحتويات · <span className="num">{num(folder.childCount)}</span></h2>
-            <div className="seg" role="group" aria-label="الترتيب">
-              {SORTS.filter((s) => !simple || s.key !== "apparent").map((s) => (
-                <button key={s.key} type="button" aria-pressed={s.key === sort} onClick={() => setSort(s.key)}>{s.name}</button>
-              ))}
-            </div>
-          </div>
-          <FolderList
-            scanId={scanId}
-            parent={folder}
-            sort={sort}
-            unit={unit}
-            selectedId={selected?.id ?? null}
-            checked={checked}
-            version={version}
-            onOpen={open}
-            onUp={() => chain.length > 1 && open(chain[chain.length - 2]!)}
-            onSelect={setSelected}
-            onToggle={toggle}
-            onCheck={(n) => setChecked((m) => (m.has(n.id) || n.protected ? m : new Map(m).set(n.id, n)))}
-          />
-        </section>
-
-        <section className="map" aria-labelledby="map-title">
-          <h2 id="map-title" className="sr-only">خريطة المساحة</h2>
-          <Treemap
-            items={mapItems}
-            unit={unit}
-            selectedId={selected?.id ?? null}
-            onActivate={(item) => {
-              if (!item.node) return;
-              if (item.node.isDir && item.node.childCount > 0) open(item.node);
-              else setSelected(item.node);
+      {/* Layout Presets Toolbar */}
+      <div className="layout-bar">
+        <div className="layout-presets" role="group" aria-label="توزيع اللوحات">
+          <span className="small muted">عرض اللوحات:</span>
+          <button
+            type="button"
+            className={`preset-btn ${splitMode === "split" && splitRatio === 50 ? "active" : ""}`}
+            onClick={() => {
+              setSplitMode("split");
+              setSplitRatio(50);
             }}
-          />
-          <div className="legend">
-            <span><span className="swatch" style={{ background: KIND_COLOR.dir }} />مجلد</span>
-            <span><span className="swatch" style={{ background: KIND_COLOR.file }} />ملف</span>
-            <span><span className="swatch" style={{ background: KIND_COLOR.others }} />عناصر أصغر مجمّعة</span>
-            <span className="muted">المساحة حسب {sort === "apparent" ? "الحجم الظاهري" : "الحجم على القرص"}</span>
+            title="تقسيم متساوي (50% / 50%)"
+          >
+            50/50
+          </button>
+          <button
+            type="button"
+            className={`preset-btn ${splitMode === "split" && splitRatio === 65 ? "active" : ""}`}
+            onClick={() => {
+              setSplitMode("split");
+              setSplitRatio(65);
+            }}
+            title="شجرة أوسع (65% شجرة / 35% خريطة)"
+          >
+            شجرة أوسع
+          </button>
+          <button
+            type="button"
+            className={`preset-btn ${splitMode === "split" && splitRatio === 35 ? "active" : ""}`}
+            onClick={() => {
+              setSplitMode("split");
+              setSplitRatio(35);
+            }}
+            title="خريطة أوسع (35% شجرة / 65% خريطة)"
+          >
+            خريطة أوسع
+          </button>
+          <button
+            type="button"
+            className={`preset-btn ${splitMode === "tree-only" ? "active" : ""}`}
+            onClick={() => setSplitMode(splitMode === "tree-only" ? "split" : "tree-only")}
+            title="عرض الشجرة فقط"
+          >
+            شجرة فقط
+          </button>
+          <button
+            type="button"
+            className={`preset-btn ${splitMode === "map-only" ? "active" : ""}`}
+            onClick={() => setSplitMode(splitMode === "map-only" ? "split" : "map-only")}
+            title="عرض الخريطة فقط"
+          >
+            خريطة فقط
+          </button>
+        </div>
+      </div>
+
+      <div className="panes" ref={panesRef} data-dragging={isDragging}>
+        {splitMode !== "map-only" && (
+          <section
+            className="list card"
+            aria-labelledby="list-title"
+            style={{
+              flex: splitMode === "tree-only" ? "1 1 100%" : `0 0 calc(${splitRatio}% - 5px)`,
+              maxWidth: splitMode === "tree-only" ? "100%" : `calc(${splitRatio}% - 5px)`,
+            }}
+          >
+            <div className="list-head">
+              <h2 id="list-title" className="label muted">المحتويات · <span className="num">{num(folder.childCount)}</span></h2>
+              <div className="seg" role="group" aria-label="الترتيب">
+                {SORTS.filter((s) => !simple || s.key !== "apparent").map((s) => (
+                  <button key={s.key} type="button" aria-pressed={s.key === sort} onClick={() => setSort(s.key)}>{s.name}</button>
+                ))}
+              </div>
+            </div>
+            <FolderList
+              scanId={scanId}
+              parent={folder}
+              sort={sort}
+              unit={unit}
+              selectedId={selected?.id ?? null}
+              checked={checked}
+              version={version}
+              onOpen={open}
+              onUp={() => chain.length > 1 && open(chain[chain.length - 2]!)}
+              onSelect={setSelected}
+              onToggle={toggle}
+              onCheck={(n) => setChecked((m) => (m.has(n.id) || n.protected ? m : new Map(m).set(n.id, n)))}
+            />
+          </section>
+        )}
+
+        {splitMode === "split" && (
+          <div
+            className="splitter-bar"
+            data-dragging={isDragging}
+            onMouseDown={startDrag}
+            title="اسحب لتعديل العرض بين الشجرة والخريطة"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="تعديل العرض بين الشجرة والخريطة"
+          >
+            <div className="splitter-handle" />
           </div>
-        </section>
+        )}
+
+        {splitMode !== "tree-only" && (
+          <section
+            className="map"
+            aria-labelledby="map-title"
+            style={{
+              flex: splitMode === "map-only" ? "1 1 100%" : `1 1 calc(${100 - splitRatio}% - 5px)`,
+              maxWidth: splitMode === "map-only" ? "100%" : `calc(${100 - splitRatio}% - 5px)`,
+              minWidth: 0,
+            }}
+          >
+            <div className="map-toolbar">
+              <h2 id="map-title" className="label muted">خريطة المساحة</h2>
+              <div className="seg" role="group" aria-label="عمق تفريغ الخريطة">
+                <span className="small muted">تفرّع الكتل:</span>
+                <button type="button" aria-pressed={mapDepth === 1} onClick={() => setMapDepth(1)} title="مستوى واحد">مستوى 1</button>
+                <button type="button" aria-pressed={mapDepth === 2} onClick={() => setMapDepth(2)} title="مستويان (كتل متداخلة)">مستوى 2</button>
+              </div>
+            </div>
+            <Treemap
+              items={mapItems}
+              unit={unit}
+              selectedId={selected?.id ?? null}
+              onActivate={(item) => {
+                if (!item.node) return;
+                if (item.node.isDir && item.node.childCount > 0) open(item.node);
+                else setSelected(item.node);
+              }}
+            />
+            <div className="legend">
+              <span><span className="swatch" style={{ background: KIND_COLOR.dir }} />مجلد</span>
+              <span><span className="swatch" style={{ background: KIND_COLOR.file }} />ملف</span>
+              <span><span className="swatch" style={{ background: KIND_COLOR.others }} />عناصر أصغر مجمّعة</span>
+              <span className="muted">المساحة حسب {sort === "apparent" ? "الحجم الظاهري" : "الحجم على القرص"}</span>
+            </div>
+          </section>
+        )}
       </div>
 
       {picked.length > 0 && (

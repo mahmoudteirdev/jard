@@ -8,6 +8,7 @@ export interface MapItem {
   name: string;
   value: number;
   color: string;
+  children?: MapItem[];
 }
 
 interface Rect { x: number; y: number; w: number; h: number }
@@ -89,14 +90,93 @@ export function Treemap(props: {
         const w = r.w - GAP;
         const h = r.h - GAP;
         if (w < 2 || h < 2) return null;
-        const label = w > 72 && h > 64; // room for the name and size at their full size
         const text = `${item.name}، ${size(item.value, props.unit)}`;
+        const isSelected = item.node !== null && item.node.id === props.selectedId;
+
+        // Render nested sub-blocks if available and rect is large enough
+        const hasChildren = !!item.children && item.children.length > 0 && w >= 68 && h >= 56;
+        if (hasChildren) {
+          const subItems = item.children!.filter((c) => c.value > 0);
+          const topBarH = 22;
+          const subRects = squarify(subItems.map((c) => c.value), {
+            x: 2,
+            y: topBarH + 2,
+            w: Math.max(1, w - 4),
+            h: Math.max(1, h - topBarH - 4),
+          });
+
+          return (
+            <div
+              key={item.node?.id ?? `parent-${k}`}
+              className="cell parent-cell"
+              data-selected={isSelected}
+              style={{
+                insetInlineStart: r.x,
+                top: r.y,
+                width: w,
+                height: h,
+                background: item.color,
+              }}
+              title={text}
+            >
+              <button
+                type="button"
+                className="parent-title"
+                onClick={() => props.onActivate(item)}
+                title={text}
+              >
+                <strong className="name">{item.name}</strong>
+                <span className="num">{size(item.value, props.unit)}</span>
+              </button>
+              <div className="sub-cells-container">
+                {subItems.map((sub, sIdx) => {
+                  const sr = subRects[sIdx]!;
+                  const sw = Math.max(1, sr.w - 1);
+                  const sh = Math.max(1, sr.h - 1);
+                  if (sw < 2 || sh < 2) return null;
+                  const subText = `${sub.name}، ${size(sub.value, props.unit)}`;
+                  const showSubLabel = sw > 40 && sh > 24;
+                  const isSubSelected = sub.node !== null && sub.node.id === props.selectedId;
+                  return (
+                    <button
+                      key={sub.node?.id ?? `sub-${sIdx}`}
+                      type="button"
+                      className="sub-cell"
+                      data-selected={isSubSelected}
+                      style={{
+                        insetInlineStart: sr.x,
+                        top: sr.y,
+                        width: sw,
+                        height: sh,
+                        background: sub.color,
+                      }}
+                      title={subText}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        props.onActivate(sub);
+                      }}
+                    >
+                      {showSubLabel && (
+                        <>
+                          <strong className="sub-name">{sub.name}</strong>
+                          <span className="num tiny">{size(sub.value, props.unit)}</span>
+                        </>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        }
+
+        const label = w > 72 && h > 64; // room for the name and size at their full size
         return (
           <button
             key={item.node?.id ?? "others"}
             type="button"
             className="cell"
-            data-selected={item.node !== null && item.node.id === props.selectedId}
+            data-selected={isSelected}
             // The largest item starts at the reading edge: right in Arabic, left in English
             style={{ insetInlineStart: r.x, top: r.y, width: w, height: h, background: item.color }}
             title={text}

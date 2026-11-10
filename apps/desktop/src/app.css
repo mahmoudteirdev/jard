@@ -150,7 +150,102 @@ legend { padding: 0 6px; font-weight: 700; }
 
 /* Stacked by default, each pane with its own height. Side by side when both fit: they then share
    the height left in the window, and the list scrolls inside itself instead of growing the page. */
-.panes { display: flex; flex-wrap: wrap; gap: 16px; }
+.panes { display: flex; flex-wrap: wrap; gap: 0; position: relative; }
+.panes[data-dragging="true"] { cursor: col-resize; user-select: none; }
+
+.splitter-bar {
+  flex: 0 0 10px;
+  width: 10px;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  transition: background 0.15s;
+  z-index: 10;
+  user-select: none;
+}
+.splitter-bar:hover, .splitter-bar[data-dragging="true"] {
+  background: var(--surface-hover);
+}
+.splitter-handle {
+  width: 2px;
+  height: 48px;
+  background: var(--line-strong);
+  border-radius: 1px;
+}
+.splitter-bar:hover .splitter-handle, .splitter-bar[data-dragging="true"] .splitter-handle {
+  background: var(--accent);
+  width: 4px;
+}
+
+.layout-bar { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 8px; }
+.layout-presets { display: flex; align-items: center; gap: 4px; }
+.preset-btn {
+  background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink-muted);
+  font-size: 13px; font-weight: 500; padding: 4px 10px; cursor: pointer; transition: all 0.15s;
+}
+.preset-btn:hover { background: var(--surface-hover); color: var(--ink); }
+.preset-btn.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+
+.tree-container { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.tree-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 6px 12px; background: var(--surface-raised); border-bottom: 1px solid var(--line);
+}
+.tree-depth-seg button { min-height: 28px; font-size: 13px; padding: 0 10px; }
+.tree-row { transition: background 0.1s; }
+.tree-chevron-btn {
+  flex: none; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; color: var(--ink-muted); cursor: pointer; padding: 0;
+}
+.tree-chevron-btn:hover { color: var(--ink); background: var(--surface-hover); }
+.tree-chevron { transition: transform 0.15s ease; }
+:root[dir="rtl"] .tree-chevron { transform: rotate(180deg); }
+.tree-chevron.expanded { transform: rotate(90deg) !important; }
+.tree-chevron-spacer { flex: none; width: 24px; height: 24px; }
+.tree-icon { flex: none; display: flex; align-items: center; margin-inline: 4px; }
+.tree-spinner {
+  width: 10px; height: 10px; border: 2px solid var(--ink-muted); border-top-color: transparent;
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.dir-name { font-weight: 700; }
+.drill-btn {
+  flex: none; font-size: 12px; font-weight: 600; padding: 2px 8px; min-height: 24px;
+  background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink-muted);
+  cursor: pointer; margin-inline-start: 4px; transition: all 0.15s;
+}
+.drill-btn:hover { background: var(--surface-hover); color: var(--ink); border-color: var(--line-strong); }
+
+.map-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 4px 0 6px 0;
+}
+.map-toolbar .seg button { min-height: 28px; font-size: 13px; padding: 0 10px; }
+.parent-cell {
+  display: flex; flex-direction: column; padding: 2px; border: 1px solid rgba(0,0,0,0.4);
+  box-sizing: border-box; overflow: hidden;
+}
+.parent-title {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  height: 20px; padding: 0 6px; background: rgba(0,0,0,0.18); border: 0; color: #101412;
+  cursor: pointer; text-align: start; width: 100%; box-sizing: border-box; overflow: hidden;
+}
+.parent-title:hover { background: rgba(0,0,0,0.28); }
+.parent-title .name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.parent-title .num { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.sub-cells-container { position: relative; flex: 1 1 0; min-height: 0; width: 100%; overflow: hidden; }
+.sub-cell {
+  position: absolute; border: 1px solid rgba(0,0,0,0.2); padding: 2px 4px; overflow: hidden;
+  color: #101412; display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  text-align: start; cursor: pointer; box-sizing: border-box; transition: filter 0.1s;
+}
+.sub-cell:hover { filter: brightness(1.15); z-index: 2; }
+.sub-cell[data-selected="true"] { outline: 2px solid var(--ink); outline-offset: -2px; z-index: 3; }
+.sub-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.num.tiny { font-size: 11px; }
+
 .list { flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; }
 .list-head {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
@@ -179,7 +274,7 @@ legend { padding: 0 6px; font-weight: 700; }
 
 .map { flex: 2 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .map-area { position: relative; height: 420px; overflow: hidden; }
-@media (min-width: 1200px) {
+@media (min-width: 860px) {
   .panes { flex: 1 1 0; min-height: 460px; flex-wrap: nowrap; }
   .list, .map { min-height: 0; }
   .list-body, .map-area { flex: 1 1 0; height: auto; min-height: 0; }
