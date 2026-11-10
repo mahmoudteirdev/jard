@@ -90,6 +90,15 @@ export function SettingsScreen() {
         <fieldset>
           <legend>الفحص</legend>
           <label className="choice">
+            <input type="checkbox" checked={s.fastMft} onChange={(e) => updateSettings({ fastMft: e.target.checked })} />
+            <span>
+              الفحص السريع عبر جدول NTFS (MFT)
+              <span className="muted small" style={{ display: "block" }}>
+                يفحص القرص كاملاً في ثوانٍ معدودة عبر قراءة جدول الملفات مباشرة. يحتاج تشغيل البرنامج كمسؤول، ويتراجع للفحص العادي تلقائياً إذا تعذّر.
+              </span>
+            </span>
+          </label>
+          <label className="choice">
             <input type="checkbox" checked={s.dedupHardlinks} onChange={(e) => updateSettings({ dedupHardlinks: e.target.checked })} />
             <span>
               احسب الروابط الصلبة مرة واحدة

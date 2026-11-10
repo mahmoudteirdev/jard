@@ -665,5 +665,16 @@
  "النتيجة تظهر لحد ما تفحص من جديد، وآخر فحص كامل يبقى محفوظاً.": "The result shows until your next scan, and your last full scan stays saved.",
  "الوصول لكل الملفات مفعّل، والفحص العادي يشمل التخزين كله.": "All-files access is on, so a normal scan covers all your storage.",
  "بدون روت؟ اختر مجلداً بنفسك": "No root? Choose a folder yourself",
- "منتقي النظام ما بيفتح Android/data ولا جذر التخزين من أندرويد 11. Android/data يفتحه Shizuku أو روت.": "Since Android 11, the system picker won't open Android/data or the storage root. Shizuku or root can open Android/data."
+ "منتقي النظام ما بيفتح Android/data ولا جذر التخزين من أندرويد 11. Android/data يفتحه Shizuku أو روت.": "Since Android 11, the system picker won't open Android/data or the storage root. Shizuku or root can open Android/data.",
+ "مرات الشحن خلال 7 أيام": "Charge counts over 7 days",
+ "إجمالي الشحن هذا الأسبوع: {} مرات · المعدل: {} يومياً": "Total charges this week: {} times · Average: {} daily",
+ "يسجل توصيل الشاحن بدون أي خدمة خلفية دائمة. يستمر السجل بالتراكم مع استخدام الجهاز.": "Records charger connections without any permanent background service. The log accumulates as you use the device.",
+ "السبت": "Saturday",
+ "الأحد": "Sunday",
+ "الإثنين": "Monday",
+ "الثلاثاء": "Tuesday",
+ "الأربعاء": "Wednesday",
+ "الخميس": "Thursday",
+ "الجمعة": "Friday",
+ "يوم": "Day"
 }

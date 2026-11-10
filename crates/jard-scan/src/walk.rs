@@ -23,6 +23,8 @@ pub struct Options {
     pub max_depth: Option<u32>,
     /// Count each hard-linked file once. Cheap on Unix; on Windows it opens every file, so it is off by default.
     pub dedup_hardlinks: bool,
+    /// Fast MFT scan for Windows NTFS drives (requires Administrator privileges).
+    pub fast_mft: bool,
     /// Folders the person chose to skip. They stay listed, with nothing read under them.
     pub excluded: Vec<PathBuf>,
 }
@@ -31,7 +33,13 @@ pub struct Options {
 #[allow(clippy::derivable_impls)]
 impl Default for Options {
     fn default() -> Self {
-        Options { threads: 0, max_depth: None, dedup_hardlinks: cfg!(unix), excluded: Vec::new() }
+        Options {
+            threads: 0,
+            max_depth: None,
+            dedup_hardlinks: cfg!(unix),
+            fast_mft: true,
+            excluded: Vec::new(),
+        }
     }
 }
 
@@ -49,7 +57,15 @@ impl Options {
 /// Cancelling through `progress` returns early with what was read; unread folders are `PARTIAL`.
 /// Fails only if `root` itself is missing or is not a folder.
 pub fn scan(root: impl AsRef<Path>, opts: &Options, progress: &Progress) -> io::Result<Tree> {
-    let result = scan_inner(root.as_ref(), opts, progress);
+    let root = root.as_ref();
+    #[cfg(windows)]
+    if opts.fast_mft && crate::mft::can_scan_mft(root) {
+        if let Ok(tree) = crate::mft::scan_mft(root, opts, progress) {
+            progress.finish();
+            return Ok(tree);
+        }
+    }
+    let result = scan_inner(root, opts, progress);
     progress.finish();
     result
 }

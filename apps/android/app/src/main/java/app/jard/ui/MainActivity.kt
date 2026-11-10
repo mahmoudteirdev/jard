@@ -13,11 +13,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +37,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.foundation.Image
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -41,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.jard.design.Jard
+import app.jard.design.JardData
 import app.jard.design.JardTheme
 import app.jard.design.JardType
 
@@ -107,76 +113,156 @@ fun PathIcon(d: String, color: Color, size: Int = 20) {
 }
 
 @Composable
+fun BrandLogo() {
+    Column(
+        Modifier
+            .size(36.dp)
+            .padding(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(Modifier.size(width = 24.dp, height = 5.dp).background(JardData.d1))
+        Box(Modifier.size(width = 17.dp, height = 5.dp).background(JardData.d2))
+        Box(Modifier.size(width = 10.dp, height = 5.dp).background(JardData.d3))
+    }
+}
+
+@Composable
 private fun Root(s: AppState, resumed: Int) {
     BackHandler(enabled = s.page != Page.None || s.tab != Tab.Home) {
         if (s.page != Page.None) s.goBack() else s.tab = Tab.Home
     }
     LaunchedEffect(Unit) { if (!s.onboarded && !s.guest && s.page == Page.None) s.page = Page.Onboard }
+
+    val config = LocalConfiguration.current
+    val isTablet = config.screenWidthDp >= 600
+
     // These show a colour or a test across the whole screen, with nothing around it.
     val bare = s.page == Page.Scan || s.page == Page.Onboard || s.page == Page.Pixels || s.page == Page.Test
-    Column(Modifier.fillMaxSize().background(Jard.colors.surfaceBase).safeDrawingPadding()) {
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            when (s.page) {
-                Page.Onboard -> OnboardScreen(s, resumed)
-                Page.Permission -> PermissionScreen(s, resumed)
-                Page.Scan -> ScanScreen(s)
-                Page.ScanLost -> ScanLostScreen(s, resumed)
-                Page.Result -> ResultScreen(s)
-                Page.History -> HistoryScreen(s)
-                Page.Settings -> SettingsScreen(s)
-                Page.About -> AboutScreen(s)
-                Page.Clean -> CleanScreen(s)
-                Page.Explain -> ExplainScreen(s)
-                Page.Slow -> SlowScreen(s)
-                Page.Device -> DeviceScreen(s)
-                Page.Battery -> BatteryScreen(s)
-                Page.Bench -> BenchScreen(s)
-                Page.Pixels -> PixelsScreen(s)
-                Page.Used -> UsedScreen(s)
-                Page.Security -> SecurityScreen(s)
-                Page.Network -> NetworkScreen(s, resumed)
-                Page.Compare -> CompareScreen(s)
-                Page.Widgets -> WidgetsScreen(s)
-                Page.Access -> AccessScreen(s, resumed)
-                Page.Root -> RootScreen(s)
-                Page.Expert -> ExpertScreen(s)
-                Page.Pro -> ProScreen(s)
-                Page.Key -> KeyScreen(s)
-                Page.Guest -> GuestScreen(s)
-                Page.ShopLog -> ShopLogScreen(s)
-                Page.ShopReport -> ShopReportScreen(s)
-                Page.ShopSetup -> ShopSetupScreen(s)
-                Page.ShopCompare -> ShopCompareScreen(s)
-                Page.Test -> ManualTestScreen(s)
-                Page.None -> when (s.tab) {
-                    Tab.Home -> if (s.simple) SimpleHome(s) else HomeScreen(s, resumed)
-                    Tab.Files -> FilesScreen(s)
-                    Tab.Apps -> AppsScreen(s, resumed)
-                    Tab.Check -> CheckScreen(s)
-                    Tab.More -> MoreScreen(s)
+
+    if (isTablet) {
+        Row(Modifier.fillMaxSize().background(Jard.colors.surfaceBase).safeDrawingPadding()) {
+            if (!bare) {
+                Column(
+                    Modifier
+                        .width(96.dp)
+                        .fillMaxHeight()
+                        .background(Jard.colors.surfaceRaised)
+                        .padding(vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    BrandLogo()
+                    Spacer(Modifier.height(16.dp))
+                    for ((tab, name, d) in NAV) {
+                        val on = s.page == Page.None && s.tab == tab
+                        val color = if (on) Jard.colors.statusWarn else Jard.colors.ink
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .semantics { selected = on }
+                                .clickable(role = Role.Tab) {
+                                    s.page = Page.None
+                                    s.tab = tab
+                                },
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            PathIcon(d, color, size = 22)
+                            Spacer(Modifier.height(4.dp))
+                            T(name, style = JardType.label, color = color, weight = if (on) FontWeight.Bold else FontWeight.Medium)
+                        }
+                        Spacer(Modifier.height(6.dp))
+                    }
                 }
+                Box(Modifier.width(1.dp).fillMaxHeight().background(Jard.colors.line))
+            }
+            Box(Modifier.weight(1f).fillMaxHeight()) {
+                ScreenContent(s, resumed, isTablet = true)
             }
         }
-        if (!bare) {
-            Row(Modifier.fillMaxWidth().height(68.dp).background(Jard.colors.surfaceRaised)) {
-                for ((tab, name, d) in NAV) {
-                    val on = s.page == Page.None && s.tab == tab
-                    val color = if (on) Jard.colors.statusWarn else Jard.colors.ink
-                    Column(
-                        Modifier.weight(1f).height(68.dp)
-                            .semantics { selected = on }
-                            .clickable(role = Role.Tab) {
-                                s.page = Page.None
-                                s.tab = tab
-                            },
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        PathIcon(d, color)
-                        T(name, style = JardType.label, color = color, weight = if (on) FontWeight.Bold else FontWeight.Medium)
+    } else {
+        Column(Modifier.fillMaxSize().background(Jard.colors.surfaceBase).safeDrawingPadding()) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                ScreenContent(s, resumed, isTablet = false)
+            }
+            if (!bare) {
+                Row(Modifier.fillMaxWidth().height(68.dp).background(Jard.colors.surfaceRaised)) {
+                    for ((tab, name, d) in NAV) {
+                        val on = s.page == Page.None && s.tab == tab
+                        val color = if (on) Jard.colors.statusWarn else Jard.colors.ink
+                        Column(
+                            Modifier.weight(1f).height(68.dp)
+                                .semantics { selected = on }
+                                .clickable(role = Role.Tab) {
+                                    s.page = Page.None
+                                    s.tab = tab
+                                },
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            PathIcon(d, color)
+                            T(name, style = JardType.label, color = color, weight = if (on) FontWeight.Bold else FontWeight.Medium)
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ScreenContent(s: AppState, resumed: Int, isTablet: Boolean) {
+    if (isTablet && s.page == Page.Explain && s.explaining != null) {
+        Row(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(0.55f).fillMaxHeight()) {
+                FilesScreen(s)
+            }
+            Box(Modifier.width(1.dp).fillMaxHeight().background(Jard.colors.line))
+            Box(Modifier.weight(0.45f).fillMaxHeight()) {
+                ExplainScreen(s)
+            }
+        }
+        return
+    }
+
+    when (s.page) {
+        Page.Onboard -> OnboardScreen(s, resumed)
+        Page.Permission -> PermissionScreen(s, resumed)
+        Page.Scan -> ScanScreen(s)
+        Page.ScanLost -> ScanLostScreen(s, resumed)
+        Page.Result -> ResultScreen(s)
+        Page.History -> HistoryScreen(s)
+        Page.Settings -> SettingsScreen(s)
+        Page.About -> AboutScreen(s)
+        Page.Clean -> CleanScreen(s)
+        Page.Explain -> ExplainScreen(s)
+        Page.Slow -> SlowScreen(s)
+        Page.Device -> DeviceScreen(s)
+        Page.Battery -> BatteryScreen(s)
+        Page.Bench -> BenchScreen(s)
+        Page.Pixels -> PixelsScreen(s)
+        Page.Used -> UsedScreen(s)
+        Page.Security -> SecurityScreen(s)
+        Page.Network -> NetworkScreen(s, resumed)
+        Page.Compare -> CompareScreen(s)
+        Page.Widgets -> WidgetsScreen(s)
+        Page.Access -> AccessScreen(s, resumed)
+        Page.Root -> RootScreen(s)
+        Page.Expert -> ExpertScreen(s)
+        Page.Pro -> ProScreen(s)
+        Page.Key -> KeyScreen(s)
+        Page.Guest -> GuestScreen(s)
+        Page.ShopLog -> ShopLogScreen(s)
+        Page.ShopReport -> ShopReportScreen(s)
+        Page.ShopSetup -> ShopSetupScreen(s)
+        Page.ShopCompare -> ShopCompareScreen(s)
+        Page.Test -> ManualTestScreen(s)
+        Page.None -> when (s.tab) {
+            Tab.Home -> if (s.simple) SimpleHome(s) else HomeScreen(s, resumed)
+            Tab.Files -> FilesScreen(s)
+            Tab.Apps -> AppsScreen(s, resumed)
+            Tab.Check -> CheckScreen(s)
+            Tab.More -> MoreScreen(s)
         }
     }
 }

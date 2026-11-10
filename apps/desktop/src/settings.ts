@@ -11,6 +11,8 @@ export interface Settings {
   unit: Unit;
   /** Count each hard-linked file once. About twice as slow on Windows. */
   dedupHardlinks: boolean;
+  /** Fast scan through the NTFS Master File Table when running as administrator. */
+  fastMft: boolean;
   /** Save results on this machine for next time and for comparing. */
   keepResults: boolean;
   /** Look for a newer version at each start. Null: not asked yet. */
@@ -26,7 +28,7 @@ export interface Settings {
 }
 
 const KEY = "jard.settings";
-const DEFAULTS: Settings = { theme: "dark", unit: "GB", dedupHardlinks: false, keepResults: true, checkUpdates: null, virustotal: false, virustotalKey: "", language: "ar", level: "expert", excluded: [] };
+const DEFAULTS: Settings = { theme: "dark", unit: "GB", dedupHardlinks: false, fastMft: true, keepResults: true, checkUpdates: null, virustotal: false, virustotalKey: "", language: "ar", level: "expert", excluded: [] };
 
 function load(): Settings {
   try {

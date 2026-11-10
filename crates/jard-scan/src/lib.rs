@@ -20,6 +20,8 @@
 //! ```
 
 pub mod drives;
+#[cfg(windows)]
+pub mod mft;
 mod duplicates;
 mod similar;
 mod truth;

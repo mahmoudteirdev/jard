@@ -9,6 +9,7 @@ export interface ScanOptions {
   threads?: number;
   maxDepth?: number;
   dedupHardlinks?: boolean;
+  fastMft?: boolean;
 }
 
 export interface NodeDto {

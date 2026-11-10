@@ -58,7 +58,7 @@ export async function startScan(root: string, drive: Drive | null, dedupHardlink
   unlisten.forEach((u) => u());
   unlisten = [];
 
-  const id = await engine.startScan(root, { dedupHardlinks, excluded: currentSettings().excluded }, keep);
+  const id = await engine.startScan(root, { dedupHardlinks, fastMft: currentSettings().fastMft, excluded: currentSettings().excluded }, keep);
   set({ id, root, drive, dedup: dedupHardlinks, phase: "running", progress: null, done: null, startedAt: Date.now(), finishedAt: null, pausedAt: null, pausedMs: 0 });
   // Freed only now: the old results stay on screen, and readable, until the new session replaces them.
   if (previous) void engine.forgetScan(previous.id).catch(() => {});

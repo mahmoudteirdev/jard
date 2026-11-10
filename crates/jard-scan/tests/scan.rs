@@ -521,3 +521,25 @@ fn cancelling_a_paused_scan_ends_it() {
     progress.cancel();
     assert!(scan.join().unwrap().cancelled);
 }
+
+#[cfg(windows)]
+#[test]
+fn ntfs_mft_fast_scan_checks_drive() {
+    use std::path::Path;
+    assert!(!jard_scan::mft::is_drive_root(Path::new("C:\\Users")));
+    assert!(jard_scan::mft::is_drive_root(Path::new("C:\\")));
+    assert!(jard_scan::mft::is_drive_root(Path::new("C:")));
+
+    if jard_scan::mft::can_scan_mft(Path::new("C:\\")) {
+        let p = Progress::new();
+        let opts = Options {
+            max_depth: Some(1),
+            ..Options::default()
+        };
+        let tree = jard_scan::mft::scan_mft(Path::new("C:\\"), &opts, &p);
+        assert!(tree.is_ok(), "MFT scan on C:\\ must succeed when can_scan_mft is true");
+        let t = tree.unwrap();
+        assert!(!t.nodes.is_empty());
+        assert!(t.root_node().dirs > 0);
+    }
+}

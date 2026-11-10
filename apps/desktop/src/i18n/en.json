@@ -862,5 +862,7 @@
  "ويندوز يبلّغ إن القرص متضرر. انسخ بياناتك قبل أي شي تاني.": "Windows reports this disk as damaged. Copy your data before anything else.",
  "ويندوز يبلّغ عن تحذير على هذا القرص. انسخ بياناتك قريباً.": "Windows reports a warning on this disk. Copy your data soon.",
  "فحص شامل": "Full check",
- "أعدنا قراءة الأقراص والعتاد والمساحة وبرامج بدء التشغيل. هذا لا يفحص سطح القرص نفسه.": "Disks, hardware, free space and startup programs were read again. This doesn't test the disk surface itself."
+ "أعدنا قراءة الأقراص والعتاد والمساحة وبرامج بدء التشغيل. هذا لا يفحص سطح القرص نفسه.": "Disks, hardware, free space and startup programs were read again. This doesn't test the disk surface itself.",
+ "الفحص السريع عبر جدول NTFS (MFT)": "Fast scan through the NTFS table (MFT)",
+ "يفحص القرص كاملاً في ثوانٍ معدودة عبر قراءة جدول الملفات مباشرة. يحتاج تشغيل البرنامج كمسؤول، ويتراجع للفحص العادي تلقائياً إذا تعذّر.": "Scans the whole drive in seconds by reading the file table directly. Needs administrator rights, and falls back to a normal scan automatically if unavailable."
 }

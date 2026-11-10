@@ -10,9 +10,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -21,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -33,6 +37,8 @@ import app.jard.design.JardData
 import app.jard.design.JardType
 import app.jard.engine.AppRecency
 import app.jard.engine.AppUse
+import app.jard.engine.BatteryHistory
+import app.jard.engine.DayChargeStat
 import app.jard.engine.BenchResult
 import app.jard.engine.Device
 import app.jard.engine.Facts
@@ -109,7 +115,12 @@ fun BatteryScreen(s: AppState) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("jard", android.content.Context.MODE_PRIVATE) }
     var version by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) {
+        BatteryHistory.checkCurrentCharging(context)
+        version++
+    }
     val b = remember(version) { Facts.battery(context) }
+    val weeklyStats = remember(version) { BatteryHistory.getWeeklyStats(context) }
     val startPct = prefs.getInt("capPct", -1)
     val startMah = prefs.getInt("capMah", -1)
     Page {
@@ -125,6 +136,7 @@ fun BatteryScreen(s: AppState) {
             FactRow("السعة الأصلية", b.designMah?.let { "$it mAh" } ?: "غير متاحة")
             FactRow("الشحنة الآن", b.chargeNowMah?.let { "$it mAh" } ?: "غير متاحة")
         }
+        BatteryWeeklyChart(weeklyStats)
         T("اختبار السعة", weight = FontWeight.Bold)
         T("يقيس الشحن الفعلي أثناء التفريغ. ابدأ وأنت مش شاحن، واستخدم الهاتف عادي، وارجع لما تنزل البطارية 15% على الأقل.", color = Jard.colors.inkQuiet)
         val mah = b.chargeNowMah
@@ -153,6 +165,66 @@ fun BatteryScreen(s: AppState) {
                 version++
             }, Modifier.fillMaxWidth())
         }
+    }
+}
+
+@Composable
+fun BatteryWeeklyChart(stats: List<DayChargeStat>) {
+    val total = stats.sumOf { it.charges }
+    val maxCharges = (stats.maxOfOrNull { it.charges } ?: 1).coerceAtLeast(3)
+    val avg = if (stats.isNotEmpty()) String.format(java.util.Locale.US, "%.1f", total.toFloat() / stats.size) else "0"
+
+    Card {
+        T("مرات الشحن خلال 7 أيام", weight = FontWeight.Bold)
+        T("إجمالي الشحن هذا الأسبوع: $total مرات · المعدل: $avg يومياً", color = Jard.colors.inkQuiet, style = JardType.label)
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(130.dp)
+                .background(Jard.colors.surfaceSunken)
+                .padding(horizontal = 8.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            for (day in stats) {
+                val barFraction = if (maxCharges > 0) (day.charges.toFloat() / maxCharges).coerceIn(0.08f, 1f) else 0.08f
+                val barColor = when {
+                    day.isToday -> Jard.colors.statusWarn
+                    day.charges > 0 -> Jard.colors.statusGood
+                    else -> Jard.colors.surfaceRaised
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    T(
+                        day.charges.toString(),
+                        style = JardType.number.copy(fontSize = 12.sp),
+                        color = if (day.charges > 0) Jard.colors.ink else Jard.colors.inkDisabled,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Box(
+                        Modifier
+                            .width(16.dp)
+                            .height((70 * barFraction).dp)
+                            .background(barColor)
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    T(
+                        if (I18n.english) day.dayNameEn else day.dayNameAr,
+                        style = JardType.label.copy(fontSize = 12.sp),
+                        color = if (day.isToday) Jard.colors.statusWarn else Jard.colors.inkQuiet,
+                        weight = if (day.isToday) FontWeight.Bold else FontWeight.Medium,
+                    )
+                }
+            }
+        }
+        Muted("يسجل توصيل الشاحن بدون أي خدمة خلفية دائمة. يستمر السجل بالتراكم مع استخدام الجهاز.")
     }
 }
 

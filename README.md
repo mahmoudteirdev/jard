@@ -129,7 +129,7 @@ Every push to `main` builds both apps on GitHub, and a version tag publishes a r
 | Android | Core tested on a Galaxy S9 (Android 10), every screen on an Android 15 emulator |
 | Root and Shizuku | Built, not yet tested with the access really granted |
 | macOS and Linux | Code and settings exist, not yet built or run |
-| Not built yet | Quick scan through the NTFS table, the 7-day charging chart, a tablet layout |
+| Tablet & Battery Chart | Built: adaptive navigation rail, two-pane layout, and 7-day battery charging history |
 
 The full spec and the decisions behind it are in [`design/HANDOFF.md`](design/HANDOFF.md), in Arabic.
 
