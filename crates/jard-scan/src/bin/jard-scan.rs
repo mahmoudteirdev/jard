@@ -31,6 +31,8 @@ fn parse() -> Result<Args, String> {
             Some("--max-depth") => args.opts.max_depth = Some(num(it.next(), "--max-depth")? as u32),
             Some("--dedup") => args.opts.dedup_hardlinks = true,
             Some("--no-dedup") => args.opts.dedup_hardlinks = false,
+            Some("--mft") => args.opts.fast_mft = true,
+            Some("--no-mft") => args.opts.fast_mft = false,
             Some("--gib") => args.binary = true,
             Some("--json") => args.json = Some(it.next().ok_or("--json needs a file")?.into()),
             Some("-h" | "--help") => return Err(String::new()),

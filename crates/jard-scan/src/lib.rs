@@ -68,7 +68,24 @@ pub fn spawn(root: PathBuf, opts: Options) -> ScanHandle {
     let shared = Arc::clone(&progress);
     let thread = std::thread::Builder::new()
         .name("jard-scan".into())
-        .spawn(move || scan(&root, &opts, &shared))
+        .spawn(move || {
+            let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                scan(&root, &opts, &shared)
+            }));
+            match res {
+                Ok(r) => r,
+                Err(e) => {
+                    let msg = if let Some(s) = e.downcast_ref::<&str>() {
+                        (*s).to_string()
+                    } else if let Some(s) = e.downcast_ref::<String>() {
+                        s.clone()
+                    } else {
+                        "scan thread panicked".to_string()
+                    };
+                    Err(io::Error::other(format!("scan error: {msg}")))
+                }
+            }
+        })
         .expect("failed to start scan thread");
     ScanHandle { progress, thread }
 }

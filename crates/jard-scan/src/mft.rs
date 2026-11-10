@@ -565,6 +565,17 @@ fn parse_mft_record(record_num: u64, rec: &[u8], cluster_size: u64) -> Option<Mf
 
     let name = best_name?;
 
+    // Record numbers < 16 are reserved NTFS system metadata (0: $MFT, 1: $MFTMirr, ..., 5: Root directory).
+    // Root directory (FRN 5) is the container itself, not a child.
+    if record_num < 16 || record_num == best_parent {
+        return None;
+    }
+
+    // Filter out dot, dotdot, or empty names.
+    if name.is_empty() || name == "." || name == ".." {
+        return None;
+    }
+
     // Filter out internal system metadata files directly in the root ($MFT, $LogFile, etc.)
     // unless they belong to normal user directories.
     if best_parent == 5 && name.starts_with('$') && !name.starts_with("$RECYCLE.BIN") {
@@ -630,21 +641,23 @@ fn build_tree_from_mft(
 ) -> Tree {
     let mut nodes: Vec<Node> = Vec::new();
 
-    // Map: frn -> assigned NodeId
-    let mut frn_to_node: HashMap<u64, NodeId> = HashMap::new();
+    // Track visited directory FRNs to prevent cycles, self-references, or duplicate traversal
+    let mut visited_dirs: std::collections::HashSet<u64> = std::collections::HashSet::new();
+    visited_dirs.insert(target_frn);
 
-    // BFS Queue: (frn, parent_node_id, depth)
+    // BFS Queue: (&MftRecord, parent_node_id, depth)
     let mut queue = std::collections::VecDeque::new();
 
     // Root node is at index 0
     let root_display = display_path(&root_path);
     let root_node = Node::new(Tree::ROOT, root_display.into(), None, true);
     nodes.push(root_node);
-    frn_to_node.insert(target_frn, Tree::ROOT);
 
     if let Some(direct_children) = children_by_parent.get(&target_frn) {
         for c in direct_children {
-            queue.push_back((c, Tree::ROOT, 1u32));
+            if !c.is_dir || visited_dirs.insert(c.record_num) {
+                queue.push_back((c, Tree::ROOT, 1u32));
+            }
         }
     }
 
@@ -676,20 +689,35 @@ fn build_tree_from_mft(
                 .is_some_and(|n| n.eq_ignore_ascii_case(&entry.name))
         });
 
+        // Reparse points (junctions, symlinks) must not be traversed as directories.
+        // Only cloud directories (e.g. OneDrive placeholders) are traversed.
+        let is_reparse_dir = entry.is_dir && (entry.flags & flags::REPARSE != 0) && (entry.flags & flags::CLOUD == 0);
+
         // Check depth limit
         let depth_limited = opts.max_depth.is_some_and(|max| depth >= max);
 
         nodes[parent_id as usize].children.push(node_id);
         nodes.push(node);
 
-        if entry.is_dir && !is_excluded {
+        if entry.is_dir && !is_excluded && !is_reparse_dir {
             if depth_limited {
                 nodes[node_id as usize].flags |= flags::PARTIAL;
             } else if let Some(sub_children) = children_by_parent.get(&entry.record_num) {
                 for sc in sub_children {
-                    queue.push_back((sc, node_id, depth + 1));
+                    if !sc.is_dir || visited_dirs.insert(sc.record_num) {
+                        queue.push_back((sc, node_id, depth + 1));
+                    }
                 }
             }
+        }
+    }
+
+    // Initialize every folder's totals with its own direct files before tree rollup
+    for node in &mut nodes {
+        if node.is_dir {
+            node.apparent = node.own_apparent;
+            node.on_disk = node.own_on_disk;
+            node.files = node.own_files;
         }
     }
 
