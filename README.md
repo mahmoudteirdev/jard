@@ -12,7 +12,13 @@
 
 <div dir="rtl">
 
-**جَرد** بيفحص قرصك أو هاتفك وبيوريك وين راحت المساحة، وبيشرح كل رقم بكلام واضح. اللي بتختاره ما بينحذف فوراً: بينتقل لحجر مؤقت 30 يوماً وبتقدر ترجّعه. التطبيق عربي أولاً، وفيه واجهة إنجليزية كاملة.
+**جَرد** بيفحص قرصك أو هاتفك وبيوريك وين راحت المساحة، وبيشرح كل رقم بكلام واضح وصادق.
+- **الحجر الصحي الآمن:** ما يتم تنظيفه لا يُحذف فوراً بل ينتقل لحجر مؤقت 30 يوماً مع إمكانية التراجع الكامل.
+- **فحص MFT فائق السرعة لنظام ويندوز:** قراءة جدول الملفات الرئيسي مباشرة لفحص مئات آلاف الملفات خلال ثوانٍ.
+- **صائد مخلفات المطورين (Dev Bloat):** كشف مجلدات `node_modules` و `target` والبيئات الافتراضية للمشاريع الخاملة.
+- **فاحص عمر الذاكرة (Flash Wear):** قراءة معايير S.M.A.R.T وسجلات نواة لينكس لشريحة التخزين مع اختبار سرعة حقيقي.
+- **صائد الملفات المهجورة (Ghost Files):** كشف مثبتات البرامج والأرشيفات التي فُتحت لمرة واحدة منذ تنزيلها.
+- **عربي أولاً:** مصمم بواجهة عربية أصلية بالكامل (RTL) مع مطابقة تامة 100% للغة الإنجليزية، وبلا أي صلاحية إنترنت على الأندرويد.
 
 </div>
 
@@ -57,23 +63,30 @@ The Windows files have no code-signing certificate yet, so Windows may warn abou
 
 **Windows**
 
-- Fast scan of any drive or folder, with a treemap and a paged folder list
-- Cleanup suggestions: large, old and temporary files, exact duplicates, similar photos, and program leftovers
-- A dry run before anything moves, and administrator rights asked for one operation at a time
+- Fast scan of any drive or folder, with a treemap, sunburst visualization, and a paged folder list
+- Direct raw volume `$MFT` reading for NTFS drives, indexing hundreds of thousands of files in seconds
+- Developer Bloat Cleaner: hunts abandoned projects (Node, Rust, Python, Gradle, Flutter) and quarantines build/cache folders (`node_modules`, `target`, `.venv`, `build`) with reinstall commands
+- Ghost Files Hunter: detects stale installers, disk images, and archives (>30 days old) that were opened once or forgotten
+- Cleanup suggestions: large, old and temporary files, exact content duplicates, similar photos, and program leftovers
+- A safe 30-day quarantine with reversible undo, and administrator rights asked for one operation at a time
 - Search, scan comparison, and a screen explaining why the numbers differ from File Explorer
-- Disk health, startup programs, open ports, speed and stress tests, CSV and PDF reports
-- Scheduled scans, a command palette (`Ctrl+K`), keyboard control, and a portable version
+- Real SSD/NVMe S.M.A.R.T telemetry: wear percentage, operating hours, temperature, and read/write error counts
+- Startup programs, open ports, disk benchmark, CSV and PDF reports, scheduled scans, and command palette (`Ctrl+K`)
 - Signed updates, only if you say yes, with no network before that
 
 **Android**
 
 - Beginner and expert modes, with a plain "what is this?" for files and folders
-- Files by size and age, duplicates, app sizes, and the same 30-day quarantine
+- Flash Storage Wear & Health: direct Linux kernel sysfs inspection for eMMC/UFS health and lifetime estimates, paired with real sequential write/read speed benchmarks
+- Ghost Files Hunter: finds stale APKs, archives, and documents in Downloads that were downloaded over a month ago and never opened
+- 7-day battery charging history with daily counts, logged via hardware broadcast events without any persistent background service
+- Responsive Tablet Layout: two-pane master-detail view with adaptive vertical navigation rail on larger screens (>= 600dp)
+- Files by size and age, duplicates, app sizes, and the same safe 30-day quarantine
 - Why the phone is slow, battery, speed test, dead-pixel check, and hands-on hardware tests
 - Permissions audit, known trackers inside apps, and data use per app
 - A used-phone report as text or PDF, a guest mode that wipes itself, and a device log for shops
 - Widgets, alerts when nearly full, and a weekly scan
-- Optional Shizuku or root access for what Android keeps closed
+- Verified Shizuku and root integration: access to `Android/data`, real cache clearance, and full audit command logging
 
 ## Tools
 
@@ -125,11 +138,12 @@ Every push to `main` builds both apps on GitHub, and a version tag publishes a r
 
 | Area | State |
 |---|---|
-| Windows | Built and tested |
-| Android | Core tested on a Galaxy S9 (Android 10), every screen on an Android 15 emulator |
-| Root and Shizuku | Built, not yet tested with the access really granted |
-| macOS and Linux | Code and settings exist, not yet built or run |
+| Windows | Built and tested (NTFS MFT, Dev Bloat Cleaner, Ghost Files, S.M.A.R.T telemetry) |
+| Android | Core tested on physical Galaxy A51 (Android 13) and S9 (Android 10), all screens verified on Android 15 emulator |
+| Shizuku & Root | Built and fully verified on physical hardware (Galaxy A51) with real access granted, folder sizing, and cache clearance |
 | Tablet & Battery Chart | Built: adaptive navigation rail, two-pane layout, and 7-day battery charging history |
+| Dev Bloat & Ghost Files | Built & tested across both desktop and mobile with 100% Arabic and English translation parity |
+| macOS and Linux | Code and settings exist, not yet built or run |
 
 The full spec and the decisions behind it are in [`design/HANDOFF.md`](design/HANDOFF.md), in Arabic.
 
