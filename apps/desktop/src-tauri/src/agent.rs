@@ -144,6 +144,63 @@ pub async fn move_agent_file(from: String, to: String) -> Result<(), String> {
     .map_err(|e| e.to_string())?
 }
 
+/// Queries Google Gemini API directly via native HTTP client (bypassing browser CORS/WebView2 restrictions).
+#[tauri::command]
+pub async fn query_gemini_api(api_key: String, payload_json: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let clean_key = api_key.trim();
+        if clean_key.is_empty() {
+            return Err("مفتاح API غير موجود. يرجى إدخال مفتاح Gemini في الإعدادات.".to_string());
+        }
+
+        let models = [
+            "gemini-3.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3-flash-preview",
+            "gemini-3.8-flash",
+            "gemini-flash-latest",
+        ];
+
+        let mut last_err = String::new();
+
+        for model in models {
+            let url = format!(
+                "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={clean_key}"
+            );
+
+            let res = ureq::post(&url)
+                .timeout(std::time::Duration::from_secs(35))
+                .set("Content-Type", "application/json")
+                .send_string(&payload_json);
+
+            match res {
+                Ok(resp) => {
+                    let text = resp.into_string().map_err(|e| e.to_string())?;
+                    return Ok(text);
+                }
+                Err(ureq::Error::Status(code, resp)) => {
+                    let err_body = resp.into_string().unwrap_or_default();
+                    if err_body.contains("API_KEY_INVALID") || err_body.contains("PERMISSION_DENIED") {
+                        return Err("مفتاح API غير صالح أو غير مفعّل في Google AI Studio.".to_string());
+                    }
+                    if code == 404 || code == 503 {
+                        last_err = format!("Gemini {model} ({code}): {err_body}");
+                        continue;
+                    }
+                    return Err(format!("خطأ من Gemini ({code}): {err_body}"));
+                }
+                Err(e) => {
+                    last_err = format!("Gemini {model} network error: {e}");
+                }
+            }
+        }
+
+        Err(format!("تعذر الاتصال بخوادم Gemini: {last_err}"))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 fn dirs_fallback() -> PathBuf {
     #[cfg(target_os = "windows")]
     if let Ok(userprofile) = std::env::var("USERPROFILE") {

@@ -1,5 +1,7 @@
 // Google Gemini 2.0 Flash client with tool execution & human-in-the-loop approvals.
 
+import { engine } from "./engine";
+
 export interface GeminiMessage {
   role: "user" | "model";
   parts: GeminiPart[];
@@ -92,14 +94,6 @@ const TOOLS_DECLARATION = [
   },
 ];
 
-const CANDIDATE_MODELS = [
-  "gemini-3.5-flash",
-  "gemini-3.5-flash-lite",
-  "gemini-3-flash-preview",
-  "gemini-3.8-flash",
-  "gemini-flash-latest",
-];
-
 export async function callGemini(
   apiKey: string,
   history: GeminiMessage[],
@@ -121,60 +115,32 @@ export async function callGemini(
     },
   };
 
-  let lastError = "";
+  // Run through Tauri Rust backend to completely bypass browser CORS / WebView2 restrictions
+  const rawText = await engine.queryGeminiApi(cleanKey, JSON.stringify(body));
+  const data = JSON.parse(rawText);
 
-  for (const model of CANDIDATE_MODELS) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`;
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+  const candidate = data.candidates?.[0];
+  if (!candidate) {
+    throw new Error("لم يصل رد صالح من خوادم Gemini.");
+  }
+
+  let text = "";
+  const toolCalls: PendingToolCall[] = [];
+
+  for (const part of candidate.content?.parts || []) {
+    if (part.text) {
+      text += part.text;
+    }
+    if (part.functionCall) {
+      const fc = part.functionCall;
+      toolCalls.push({
+        id: Math.random().toString(36).substring(2, 9),
+        name: fc.name,
+        args: fc.args || {},
+        explanation: (fc.args?.explanation as string) || `استدعاء ${fc.name}`,
       });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        lastError = `Gemini ${model} (${res.status}): ${errText}`;
-        // If 404 (model retired) or 503 (temporarily unavailable), try next model
-        if (res.status === 404 || res.status === 503) {
-          continue;
-        }
-        throw new Error(lastError);
-      }
-
-      const data = await res.json();
-      const candidate = data.candidates?.[0];
-      if (!candidate) {
-        continue;
-      }
-
-      let text = "";
-      const toolCalls: PendingToolCall[] = [];
-
-      for (const part of candidate.content?.parts || []) {
-        if (part.text) {
-          text += part.text;
-        }
-        if (part.functionCall) {
-          const fc = part.functionCall;
-          toolCalls.push({
-            id: Math.random().toString(36).substring(2, 9),
-            name: fc.name,
-            args: fc.args || {},
-            explanation: (fc.args?.explanation as string) || `استدعاء ${fc.name}`,
-          });
-        }
-      }
-
-      return { text, toolCalls };
-    } catch (e: any) {
-      lastError = e?.message || String(e);
-      // If error was explicit throw (e.g. 400 invalid key), don't keep retrying all models
-      if (lastError.includes("API_KEY_INVALID") || lastError.includes("PERMISSION_DENIED")) {
-        throw new Error("مفتاح API غير صالح أو ليس لديه صلاحية. تحقق من صحة المفتاح من Google AI Studio.");
-      }
     }
   }
 
-  throw new Error(`تعذر الاتصال بخوادم Gemini: ${lastError}`);
+  return { text, toolCalls };
 }

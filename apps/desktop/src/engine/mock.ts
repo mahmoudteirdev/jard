@@ -697,6 +697,13 @@ export const mockEngine: Engine = {
     ];
   },
   async moveAgentFile(_from: string, _to: string) {},
+  async queryGeminiApi(_apiKey: string, _payloadJson: string) {
+    return JSON.stringify({
+      candidates: [{
+        content: { parts: [{ text: "رد تجريبي من الوكيل الذكي (وضع المحاكاة)." }] }
+      }]
+    });
+  },
   async startupFolder() {
     return null;
   },

@@ -550,6 +550,7 @@ export interface Engine {
   readAgentFile(path: string): Promise<string>;
   listAgentDir(path: string): Promise<AgentDirEntry[]>;
   moveAgentFile(from: string, to: string): Promise<void>;
+  queryGeminiApi(apiKey: string, payloadJson: string): Promise<string>;
   /** The folder the app was started with, once. */
   startupFolder(): Promise<string | null>;
   /** Folder picker. Resolves null if the person cancels. */

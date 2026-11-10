@@ -1054,5 +1054,7 @@
  "📁 ترتيب مجلد التنزيلات": "📁 Organize Downloads folder",
  "تعذر الاتصال بخوادم Gemini:": "Could not connect to Gemini servers:",
  "مفتاح API غير صالح أو ليس لديه صلاحية. تحقق من صحة المفتاح من Google AI Studio.": "API key is invalid or unauthorized. Please verify your key in Google AI Studio.",
- "مفتاح API غير موجود. يرجى إدخال مفتاح Gemini API من الإعدادات.": "API key missing. Please enter your Gemini API key in Settings."
+ "مفتاح API غير موجود. يرجى إدخال مفتاح Gemini API من الإعدادات.": "API key missing. Please enter your Gemini API key in Settings.",
+ "رد تجريبي من الوكيل الذكي (وضع المحاكاة).": "Demo response from AI Agent (mock mode).",
+ "لم يصل رد صالح من خوادم Gemini.": "No valid response received from Gemini servers."
 }

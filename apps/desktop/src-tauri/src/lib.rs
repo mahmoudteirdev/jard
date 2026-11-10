@@ -459,7 +459,8 @@ pub fn run() {
             agent::write_agent_file,
             agent::read_agent_file,
             agent::list_agent_dir,
-            agent::move_agent_file
+            agent::move_agent_file,
+            agent::query_gemini_api
         ])
         .run(tauri::generate_context!())
         .expect("error while running Jard");

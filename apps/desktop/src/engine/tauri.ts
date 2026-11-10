@@ -127,6 +127,7 @@ export const tauriEngine: Engine = {
   readAgentFile: (path) => invoke("read_agent_file", { path }),
   listAgentDir: (path) => invoke("list_agent_dir", { path }),
   moveAgentFile: (from, to) => invoke("move_agent_file", { from, to }),
+  queryGeminiApi: (apiKey, payloadJson) => invoke("query_gemini_api", { apiKey, payloadJson }),
   startupFolder: () => invoke<string | null>("startup_folder"),
   pickFolder: async () => {
     const picked = await open({ directory: true, multiple: false, title: "اختر مجلداً لفحصه" });
