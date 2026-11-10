@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -124,6 +125,30 @@ fun HomeScreen(s: AppState, resumed: Int) {
                 Num("/ ${sizeText(s.storage.total)}", color = Jard.colors.inkMuted)
             }
             Btn("فحص جديد", { s.startScan() }, kind = BtnKind.Primary, minHeight = 48.dp)
+        }
+        val context = LocalContext.current
+        val forecast = remember(resumed) { app.jard.engine.PredictiveStorage.predict(context) }
+        if (forecast.status == app.jard.engine.AndroidDepletionStatus.CriticalBurn && forecast.estimatedDaysRemaining != null) {
+            Note("⚠️ استهلاك حرج: المساحة ستنفد خلال ${forecast.estimatedDaysRemaining} يوماً.", Jard.colors.statusSerious, "تنظيف") { s.tab = Tab.Check }
+        }
+        Card {
+            Row(
+                Modifier.fillMaxWidth().clickable { s.page = Page.PredictiveStorage },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    T("تنبؤ المساحة الذكي ⚡", weight = FontWeight.Bold)
+                    T(
+                        if (forecast.estimatedDaysRemaining != null) "المتبقي: ${forecast.estimatedDaysRemaining} يوماً (${forecast.exhaustionDateIso})"
+                        else if (forecast.status == app.jard.engine.AndroidDepletionStatus.FreeingSpace) "المساحة الحرة تتزايد (+${kotlin.math.abs(forecast.burnVelocityMbPerDay).toInt()} MB/يوم)"
+                        else "استهلاك الذاكرة مستقر وآمن",
+                        style = JardType.label,
+                        color = Jard.colors.inkQuiet
+                    )
+                }
+                Btn("تفاصيل", { s.page = Page.PredictiveStorage })
+            }
         }
         if (s.scanError != null) Note(s.scanError!!, Jard.colors.statusSerious)
         if (tree == null && layers.isEmpty()) {
@@ -323,17 +348,21 @@ fun FilesScreen(s: AppState) {
             })
             if (folder != 0) Btn("أعلى", { folder = parent.parent })
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for ((id, name) in listOf("largest" to "الأكبر", "oldest" to "الأقدم", "dupes" to "المكرر")) {
-                val on = id == mode
-                Box(
-                    Modifier.weight(1f).heightIn(min = JardSpace.touchMin)
-                        .background(if (on) Jard.colors.surfaceSelected else Color.Transparent)
-                        .border(BorderStroke(1.dp, if (on) Jard.colors.accent else Jard.colors.line))
-                        .clickable(role = Role.RadioButton) { mode = id },
-                    contentAlignment = Alignment.Center,
-                ) { T(name, weight = if (on) FontWeight.Bold else FontWeight.Medium) }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                for ((id, name) in listOf("largest" to "الأكبر", "oldest" to "الأقدم", "dupes" to "المكرر")) {
+                    val on = id == mode
+                    Box(
+                        Modifier.weight(1f).heightIn(min = JardSpace.touchMin)
+                            .background(if (on) Jard.colors.surfaceSelected else Color.Transparent)
+                            .border(BorderStroke(1.dp, if (on) Jard.colors.accent else Jard.colors.line))
+                            .clickable(role = Role.RadioButton) { mode = id },
+                        contentAlignment = Alignment.Center,
+                    ) { T(name, weight = if (on) FontWeight.Bold else FontWeight.Medium) }
+                }
             }
+            Spacer(Modifier.width(6.dp))
+            Btn("استعلام ذكي ⚡", { s.page = Page.AiQuery })
         }
         if (mode == "dupes" && dupes == null) {
             Muted("يقرأ محتوى الملفات المتشابهة في الحجم ليقارنها، فممكن ياخد وقت.")
@@ -531,10 +560,10 @@ fun MoreScreen(s: AppState) {
         Title("المزيد")
         GuestBanner(s)
         val groups = listOf(
-            "التشخيص" to listOf("ليش هاتفي بطيء؟" to Page.Slow, "معلومات الجهاز" to Page.Device, "عمر شريحة الذاكرة" to Page.StorageHealth, "البطارية" to Page.Battery, "السرعة والشاشة" to Page.Bench, "تقرير الهاتف المستعمل" to Page.Used),
+            "التشخيص" to listOf("ليش هاتفي بطيء؟" to Page.Slow, "معلومات الجهاز" to Page.Device, "عمر شريحة الذاكرة" to Page.StorageHealth, "توقع نفاد المساحة (AI)" to Page.PredictiveStorage, "البطارية" to Page.Battery, "السرعة والشاشة" to Page.Bench, "تقرير الهاتف المستعمل" to Page.Used),
             "الأمان" to listOf("الصلاحيات والتطبيقات" to Page.Security, "الشبكة واستهلاك الإنترنت" to Page.Network),
             "للمحترفين" to listOf("أدوات الخبير والروت" to Page.Expert, "ربط الجهاز (Shizuku / روت)" to Page.Access, "سجل الأجهزة للمحلات" to Page.ShopLog),
-            "الإدارة" to listOf("الملفات المهجورة" to Page.GhostFiles, "السجل والحجر المؤقت" to Page.History, "شو كبر من آخر فحص" to Page.Compare, "الوصول إلى الملفات" to Page.Permission, "الإعدادات" to Page.Settings, "الويدجت والإشعارات" to Page.Widgets, "جَرد Pro" to Page.Pro, "حول جَرد" to Page.About),
+            "الإدارة" to listOf("الملفات المهجورة" to Page.GhostFiles, "البحث باللغة الطبيعية (AI)" to Page.AiQuery, "السجل والحجر المؤقت" to Page.History, "شو كبر من آخر فحص" to Page.Compare, "الوصول إلى الملفات" to Page.Permission, "الإعدادات" to Page.Settings, "الويدجت والإشعارات" to Page.Widgets, "جَرد Pro" to Page.Pro, "حول جَرد" to Page.About),
         )
         for ((group, items) in groups) {
             T(group, style = JardType.label, color = Jard.colors.inkMuted)

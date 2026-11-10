@@ -244,6 +244,37 @@ export interface SearchHit {
   kind: FileKind;
 }
 
+export interface ParsedAiQuery {
+  rawPrompt: string;
+  recognizedIntent: string;
+  query: SearchQuery;
+  targetFolder: string | null;
+  explanationAr: string;
+  explanationEn: string;
+  limit: number;
+}
+
+export interface AiSearchResponse {
+  parsed: ParsedAiQuery;
+  hits: SearchHit[];
+  totalMatchedBytes: number;
+}
+
+export type DepletionStatus = "stable" | "gradual_burn" | "critical_burn" | "freeing_space" | "insufficient_data";
+
+export interface DepletionForecast {
+  currentFreeBytes: number;
+  currentTotalBytes: number;
+  dailyBurnBytes: number;
+  estimatedDaysRemaining: number | null;
+  exhaustionDateIso: string | null;
+  status: DepletionStatus;
+  recommendationAr: string;
+  recommendationEn: string;
+  confidenceScore: number;
+  burnVelocityMbPerDay: number;
+}
+
 export interface Program {
   key: string;
   name: string;
@@ -511,6 +542,9 @@ export interface Engine {
   scanDevBloat(roots?: string[]): Promise<DevProject[]>;
   scanGhostFiles(roots?: string[], minDays?: number, minSizeMb?: number): Promise<GhostFile[]>;
   quarantinePaths(paths: string[]): Promise<BatchCleanResult>;
+  parseNaturalQuery(prompt: string): Promise<ParsedAiQuery>;
+  searchNaturalQuery(scanId: ScanId, prompt: string): Promise<AiSearchResponse>;
+  predictStorageDepletion(driveRoot?: string): Promise<DepletionForecast>;
   /** The folder the app was started with, once. */
   startupFolder(): Promise<string | null>;
   /** Folder picker. Resolves null if the person cancels. */

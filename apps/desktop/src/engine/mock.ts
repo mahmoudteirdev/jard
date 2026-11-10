@@ -624,6 +624,64 @@ export const mockEngine: Engine = {
       bytesReclaimed: 1024 * 1024 * 50,
     };
   },
+  async parseNaturalQuery(prompt) {
+    return {
+      rawPrompt: prompt,
+      recognizedIntent: "find_files",
+      query: { minSize: 100 * 1024 * 1024 },
+      targetFolder: "Downloads",
+      explanationAr: "الملفات الأكبر من 100 ميجابايت في مجلد التنزيلات",
+      explanationEn: "Files larger than 100 MB in Downloads",
+      limit: 50,
+    };
+  },
+  async searchNaturalQuery(_scanId, prompt) {
+    const parsed = await this.parseNaturalQuery(prompt);
+    return {
+      parsed,
+      hits: [
+        {
+          node: {
+            id: 101,
+            name: "sample-archive.zip",
+            parent: 1,
+            isDir: false,
+            childCount: 0,
+            ownApparent: 150000000,
+            ownOnDisk: 150000000,
+            ownFiles: 1,
+            apparent: 150000000,
+            onDisk: 150000000,
+            files: 1,
+            dirs: 0,
+            cloudBytes: 0,
+            dedupBytes: 0,
+            denied: 0,
+            flags: 0,
+            modified: Date.now() / 1000 - 86400 * 45,
+            protected: null,
+          },
+          path: "C:\\Users\\User\\Downloads\\sample-archive.zip",
+          kind: "archive",
+        },
+      ],
+      totalMatchedBytes: 150000000,
+    };
+  },
+  async predictStorageDepletion() {
+    return {
+      currentFreeBytes: 45 * 1024 * 1024 * 1024,
+      currentTotalBytes: 512 * 1024 * 1024 * 1024,
+      dailyBurnBytes: 450 * 1024 * 1024,
+      estimatedDaysRemaining: 74,
+      exhaustionDateIso: "2027-01-23",
+      status: "gradual_burn",
+      recommendationAr: "معدل استهلاك تدريجي (+450.0 MB يومياً). المساحة الحالية تكفي لنحو 74 يوماً.",
+      recommendationEn: "Gradual burn rate (+450.0 MB/day). Space is projected to last ~74 days.",
+      confidenceScore: 0.85,
+      burnVelocityMbPerDay: 450.0,
+    };
+  },
   async startupFolder() {
     return null;
   },

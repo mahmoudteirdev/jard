@@ -9,7 +9,7 @@ import { go, href } from "../routes";
 import type { Session } from "../scan-session";
 import { useSettings } from "../settings";
 
-type Tab = "all" | "noext" | "empty" | "similar" | "left";
+type Tab = "ai" | "all" | "noext" | "empty" | "similar" | "left";
 
 let requestedTab: Tab | null = null;
 
@@ -20,6 +20,7 @@ export function openFinderOn(tab: Tab) {
 }
 
 const TABS: { id: Tab; name: string }[] = [
+  { id: "ai", name: "استعلام ذكي ⚡" },
   { id: "all", name: "الأكبر" },
   { id: "noext", name: "بلا امتداد" },
   { id: "empty", name: "مجلدات فارغة" },
@@ -140,9 +141,31 @@ export function FinderScreen({ session }: { session: Session | null }) {
   const [hits, setHits] = useState<SearchHit[] | null>(null);
   const [cur, setCur] = useState<SearchHit | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
+  const [aiTotalBytes, setAiTotalBytes] = useState<number>(0);
+  const [aiBusy, setAiBusy] = useState(false);
+
+  const runAiSearch = async (promptToRun: string) => {
+    if (!promptToRun.trim() || scanId === null) return;
+    setAiBusy(true);
+    setError(null);
+    try {
+      const res = await engine.searchNaturalQuery(scanId, promptToRun);
+      setHits(res.hits);
+      setCur(res.hits[0] ?? null);
+      setAiExplanation(res.parsed.explanationAr || res.parsed.explanationEn);
+      setAiTotalBytes(res.totalMatchedBytes);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setAiBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (scanId === null) return;
+    if (tab === "ai") return;
     let live = true;
     const q: SearchQuery = {
       text,
@@ -191,37 +214,94 @@ export function FinderScreen({ session }: { session: Session | null }) {
   return (
     <>
       <header className="page-head"><div className="title"><h1>البحث</h1></div></header>
-      <form className="filters" aria-label="فلاتر" onSubmit={(e) => e.preventDefault()}>
-        <label className="field grow-2">
-          <span className="muted small">الاسم</span>
-          <input type="search" className="input" value={text} placeholder="جزء من اسم الملف" onChange={(e) => setText(e.target.value)} />
-        </label>
-        <label className="field">
-          <span className="muted small">النوع</span>
-          <select className="input" value={kind} onChange={(e) => setKind(e.target.value as FileKind | "")}>
-            <option value="">الكل</option>
-            {Object.entries(KIND_NAMES).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-          </select>
-        </label>
-        <label className="field">
-          <span className="muted small">الحجم</span>
-          <select className="input" value={minMb} onChange={(e) => setMinMb(Number(e.target.value))}>
-            <option value={0}>أي حجم</option>
-            <option value={100}>أكبر من 100 MB</option>
-            <option value={1000}>أكبر من 1 GB</option>
-          </select>
-        </label>
-        <label className="choice" style={{ alignSelf: "end" }}>
-          <input type="checkbox" checked={oldOnly} onChange={(e) => setOldOnly(e.target.checked)} />
-          أقدم من سنة
-        </label>
-      </form>
-
       <div role="tablist" aria-label="تصنيفات" className="tabs">
         {TABS.map((t) => (
           <button key={t.id} type="button" role="tab" aria-selected={t.id === tab} onClick={() => setTab(t.id)}>{t.name}</button>
         ))}
       </div>
+
+      {tab === "ai" && (
+        <section className="card" style={{ marginBottom: 16 }}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void runAiSearch(aiPrompt);
+            }}
+            style={{ display: "flex", gap: 8, alignItems: "stretch" }}
+          >
+            <input
+              type="search"
+              className="input"
+              style={{ flex: 1, fontSize: 14 }}
+              value={aiPrompt}
+              placeholder="اكتب استعلامك باللغة الطبيعية... مثال: الفيديوهات الأكبر من 500 ميغا في التنزيلات"
+              onChange={(e) => setAiPrompt(e.target.value)}
+            />
+            <button type="submit" className="btn btn-primary" disabled={aiBusy || !aiPrompt.trim()}>
+              {aiBusy ? "يحلل…" : "استعلم بالذكاء الاصطناعي ⚡"}
+            </button>
+          </form>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+            <span className="muted small" style={{ alignSelf: "center" }}>أمثلة جاهزة:</span>
+            {[
+              "الفيديوهات الأكبر من 500 ميغا",
+              "المستندات القديمة المهجورة من 6 شهور",
+              "المجلدات الفارغة",
+              "المثبتات الكبيرة والملفات المضغوطة",
+              "videos larger than 1gb",
+            ].map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                className="btn btn-sm"
+                style={{ fontSize: 12, padding: "4px 8px" }}
+                onClick={() => {
+                  setAiPrompt(chip);
+                  void runAiSearch(chip);
+                }}
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+          {aiExplanation && (
+            <div style={{ marginTop: 12, padding: "8px 12px", background: "var(--bg-layer-2, #f5f5f5)", borderInlineStart: "3px solid var(--accent, #000)" }}>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>⚡ تفسير محرك الذكاء الاصطناعي المحلي:</div>
+              <div className="muted small">
+                المعايير المطبقة: <strong>{aiExplanation}</strong> · المساحة الإجمالية للمطابقات: <strong>{size(aiTotalBytes, unit)}</strong>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {tab !== "ai" && tab !== "similar" && tab !== "left" && (
+        <form className="filters" aria-label="فلاتر" onSubmit={(e) => e.preventDefault()}>
+          <label className="field grow-2">
+            <span className="muted small">الاسم</span>
+            <input type="search" className="input" value={text} placeholder="جزء من اسم الملف" onChange={(e) => setText(e.target.value)} />
+          </label>
+          <label className="field">
+            <span className="muted small">النوع</span>
+            <select className="input" value={kind} onChange={(e) => setKind(e.target.value as FileKind | "")}>
+              <option value="">الكل</option>
+              {Object.entries(KIND_NAMES).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span className="muted small">الحجم</span>
+            <select className="input" value={minMb} onChange={(e) => setMinMb(Number(e.target.value))}>
+              <option value={0}>أي حجم</option>
+              <option value={100}>أكبر من 100 MB</option>
+              <option value={1000}>أكبر من 1 GB</option>
+            </select>
+          </label>
+          <label className="choice" style={{ alignSelf: "end" }}>
+            <input type="checkbox" checked={oldOnly} onChange={(e) => setOldOnly(e.target.checked)} />
+            أقدم من سنة
+          </label>
+        </form>
+      )}
       {error && <p className="note error" role="alert"><span>{error}</span></p>}
 
       {tab === "similar" ? (

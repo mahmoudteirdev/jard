@@ -30,7 +30,7 @@ enum class Page {
     None, Onboard, Permission, Scan, ScanLost, Result, History, Settings, About, Clean, Explain,
     Slow, Device, Battery, Bench, Pixels, Used, Security, Network, Compare, Widgets,
     Access, Root, Expert, Pro, Key, Guest, ShopLog, ShopReport, ShopSetup, ShopCompare, Test,
-    StorageHealth, GhostFiles,
+    StorageHealth, GhostFiles, AiQuery, PredictiveStorage,
 }
 
 /** Where "back" leads. Anything not here goes back to the tabs. */

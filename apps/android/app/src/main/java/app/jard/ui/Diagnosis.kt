@@ -44,6 +44,12 @@ import app.jard.engine.StorageBenchResult
 import app.jard.engine.FlashWearInfo
 import app.jard.engine.GhostFiles
 import app.jard.engine.AndroidGhostFile
+import app.jard.engine.AiQuery
+import app.jard.engine.ParsedAiQuery
+import app.jard.engine.AiQueryResultItem
+import app.jard.engine.PredictiveStorage
+import app.jard.engine.AndroidDepletionForecast
+import app.jard.engine.AndroidDepletionStatus
 import app.jard.engine.BenchResult
 import app.jard.engine.Device
 import app.jard.engine.Facts
@@ -565,6 +571,187 @@ fun GhostFilesScreen(s: AppState) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun AiQueryScreen(s: AppState) {
+    val context = LocalContext.current
+    var prompt by remember { mutableStateOf("") }
+    var parsed by remember { mutableStateOf<ParsedAiQuery?>(null) }
+    var results by remember { mutableStateOf<List<AiQueryResultItem>?>(null) }
+    var searching by remember { mutableStateOf(false) }
+    var cleanMsg by remember { mutableStateOf<String?>(null) }
+
+    fun runSearch(queryText: String) {
+        if (queryText.isBlank()) return
+        searching = true
+        cleanMsg = null
+        val p = AiQuery.parse(queryText)
+        parsed = p
+        kotlin.concurrent.thread {
+            val list = AiQuery.execute(context, p)
+            results = list
+            searching = false
+        }
+    }
+
+    Page {
+        Head(s, "البحث بالذكاء الاصطناعي")
+        T("استعلام باللغة الطبيعية بدون إنترنت وبسرعة فائقة (On-Device AI)", color = Jard.colors.inkQuiet)
+
+        Field(
+            value = prompt,
+            onChange = { prompt = it },
+            label = "اكتب استعلامك باللغة الطبيعية"
+        )
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Btn(if (searching) "يحلل…" else "استعلم بالذكاء الاصطناعي ⚡", {
+                runSearch(prompt)
+            }, kind = BtnKind.Primary, minHeight = 48.dp)
+        }
+
+        T("أمثلة جاهزة للبحث السريع:", style = JardType.label, color = Jard.colors.inkMuted)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            val chips = listOf(
+                "فيديوهات > 500 MB" to "الفيديوهات الأكبر من 500 ميغا",
+                "مستندات قديمة" to "المستندات القديمة المهجورة من 6 شهور",
+                "مجلدات فارغة" to "المجلدات الفارغة",
+                "حزم APK" to "ملفات التثبيت apk",
+            )
+            for ((label, query) in chips) {
+                Btn(label, {
+                    prompt = query
+                    runSearch(query)
+                })
+            }
+        }
+
+        parsed?.let { p ->
+            Card {
+                T("⚡ تحليل الذكاء الاصطناعي الفوري:", weight = FontWeight.Bold)
+                T(p.explanationAr, style = JardType.label, color = Jard.colors.accent)
+                results?.let { list ->
+                    val total = list.sumOf { it.size }
+                    T("وُجد ${list.size} عنصر بمجموع: ${sizeText(total)}", color = Jard.colors.inkQuiet)
+                }
+            }
+        }
+
+        cleanMsg?.let { Note(it, Jard.colors.statusGood) }
+
+        if (searching) {
+            Card { T("محرك الذكاء الاصطناعي يبحث في ملفات الجهاز…", color = Jard.colors.inkQuiet) }
+        } else {
+            results?.let { list ->
+                if (list.isEmpty()) {
+                    Card { T("لم يتم العثور على أي ملفات تطابق هذه المعايير.", color = Jard.colors.inkQuiet) }
+                } else {
+                    for (item in list) {
+                        Card {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    T(item.name, weight = FontWeight.SemiBold)
+                                    T(item.path, style = JardType.label, color = Jard.colors.inkQuiet)
+                                    if (item.isDir) {
+                                        T("مجلد فارغ", style = JardType.label, color = Jard.colors.inkMuted)
+                                    } else {
+                                        T(sizeText(item.size), style = JardType.number, color = Jard.colors.accent)
+                                    }
+                                }
+                                Btn("حذف", {
+                                    val ok = if (item.isDir) item.file.delete() else GhostFiles.cleanFile(context, item.file)
+                                    if (ok) {
+                                        cleanMsg = "تم حذف ${item.name} بنجاح."
+                                        results = list.filter { it.file.absolutePath != item.file.absolutePath }
+                                    }
+                                })
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PredictiveStorageScreen(s: AppState) {
+    val context = LocalContext.current
+    var forecast by remember { mutableStateOf<AndroidDepletionForecast?>(null) }
+
+    fun refresh() {
+        kotlin.concurrent.thread {
+            forecast = PredictiveStorage.predict(context)
+        }
+    }
+
+    LaunchedEffect(Unit) { refresh() }
+
+    Page {
+        Head(s, "توقع نفاد المساحة")
+        T("تحليل رياضي زمني لمعدل استهلاك الذاكرة وتوقع يوم الامتلاء بدقة (On-Device AI).", color = Jard.colors.inkQuiet)
+
+        val f = forecast
+        if (f == null) {
+            Card { T("يجري تحليل أنماط الاستهلاك والسلاسل الزمنية…", color = Jard.colors.inkQuiet) }
+        } else {
+            when (f.status) {
+                AndroidDepletionStatus.CriticalBurn -> {
+                    Note("⚠️ استهلاك حرج: الذاكرة ستنفد خلال ${f.estimatedDaysRemaining} يوماً (${f.exhaustionDateIso}) بمعدل (+${f.burnVelocityMbPerDay.toInt()} MB/يوم).", Jard.colors.statusSerious)
+                }
+                AndroidDepletionStatus.GradualBurn -> {
+                    Card {
+                        T("استهلاك تدريجي للمساحة", weight = FontWeight.Bold)
+                        T("المتبقي حتى امتلاء الذاكرة: ${f.estimatedDaysRemaining} يوماً (بتاريخ ${f.exhaustionDateIso})", color = Jard.colors.inkQuiet)
+                    }
+                }
+                AndroidDepletionStatus.FreeingSpace -> {
+                    Card {
+                        T("المساحة الحرة تتزايد", weight = FontWeight.Bold)
+                        T("أنت تقوم بتحرير مساحة إضافية بمعدل (+${kotlin.math.abs(f.burnVelocityMbPerDay).toInt()} MB/يوم).", color = Jard.colors.statusGood)
+                    }
+                }
+                AndroidDepletionStatus.Stable -> {
+                    Card {
+                        T("المساحة مستقرة وآمنة", weight = FontWeight.Bold)
+                        T("معدل الاستهلاك اليومي منخفض جداً، ولا يوجد خطر امتلاء في المدى القريب.", color = Jard.colors.inkQuiet)
+                    }
+                }
+            }
+
+            Card {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column(Modifier.weight(1f)) {
+                        T("المساحة الحرة الحالية", style = JardType.label, color = Jard.colors.inkMuted)
+                        Num(sizeText(f.currentFreeBytes), size = 20)
+                    }
+                    Column(Modifier.weight(1f)) {
+                        T("سرعة الاستهلاك اليومي", style = JardType.label, color = Jard.colors.inkMuted)
+                        Num(if (f.burnVelocityMbPerDay >= 0) "+${f.burnVelocityMbPerDay.toInt()} MB" else "${f.burnVelocityMbPerDay.toInt()} MB", size = 20)
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column(Modifier.weight(1f)) {
+                        T("دقة التنبؤ الإحصائي", style = JardType.label, color = Jard.colors.inkMuted)
+                        Num("${(f.confidenceScore * 100).toInt()}%", size = 18)
+                    }
+                    Column(Modifier.weight(1f)) {
+                        T("تاريخ الامتلاء المتوقع", style = JardType.label, color = Jard.colors.inkMuted)
+                        Num(f.exhaustionDateIso ?: "غير محدد", size = 18)
+                    }
+                }
+            }
+
+            Card {
+                T("توصية الذكاء الاصطناعي الذكية:", weight = FontWeight.Bold)
+                T(f.recommendationAr, color = Jard.colors.inkQuiet)
+                Spacer(Modifier.height(8.dp))
+                Btn("فتح التنظيف السريع", { s.tab = Tab.Check }, kind = BtnKind.Primary, modifier = Modifier.fillMaxWidth())
             }
         }
     }

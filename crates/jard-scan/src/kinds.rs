@@ -76,7 +76,7 @@ pub fn kind_totals(tree: &Tree) -> Vec<KindTotal> {
 }
 
 /// What [`Tree::search`] looks for. Empty text matches every name.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Query {
     pub text: String,

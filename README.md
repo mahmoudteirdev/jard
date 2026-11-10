@@ -15,6 +15,7 @@
 **جَرد** بيفحص قرصك أو هاتفك وبيوريك وين راحت المساحة، وبيشرح كل رقم بكلام واضح وصادق.
 - **الحجر الصحي الآمن:** ما يتم تنظيفه لا يُحذف فوراً بل ينتقل لحجر مؤقت 30 يوماً مع إمكانية التراجع الكامل.
 - **فحص MFT فائق السرعة لنظام ويندوز:** قراءة جدول الملفات الرئيسي مباشرة لفحص مئات آلاف الملفات خلال ثوانٍ.
+- **ذكاء اصطناعي محلي فائق الخفة (On-Device AI):** استعلام باللغة الطبيعية (عربي / English) وتنبؤ رياضي زمني بموعد نفاد المساحة وسرعة الاستهلاك بدون إرسال أي حرف لخوادم خارجية وبدون إنترنت نهائياً.
 - **صائد مخلفات المطورين (Dev Bloat):** كشف مجلدات `node_modules` و `target` والبيئات الافتراضية للمشاريع الخاملة.
 - **فاحص عمر الذاكرة (Flash Wear):** قراءة معايير S.M.A.R.T وسجلات نواة لينكس لشريحة التخزين مع اختبار سرعة حقيقي.
 - **صائد الملفات المهجورة (Ghost Files):** كشف مثبتات البرامج والأرشيفات التي فُتحت لمرة واحدة منذ تنزيلها.
@@ -64,6 +65,7 @@ The Windows files have no code-signing certificate yet, so Windows may warn abou
 **Windows**
 
 - Fast scan of any drive or folder, with a treemap, sunburst visualization, and a paged folder list
+- On-Device AI: Natural Language Storage Query parser (sub-50ms, zero cloud) and predictive time-series storage depletion forecasting with burnout velocity rate (+MB/day)
 - Direct raw volume `$MFT` reading for NTFS drives, indexing hundreds of thousands of files in seconds
 - Developer Bloat Cleaner: hunts abandoned projects (Node, Rust, Python, Gradle, Flutter) and quarantines build/cache folders (`node_modules`, `target`, `.venv`, `build`) with reinstall commands
 - Ghost Files Hunter: detects stale installers, disk images, and archives (>30 days old) that were opened once or forgotten
@@ -77,6 +79,7 @@ The Windows files have no code-signing certificate yet, so Windows may warn abou
 **Android**
 
 - Beginner and expert modes, with a plain "what is this?" for files and folders
+- On-Device AI: Natural Language Search and predictive storage exhaustion countdown with zero internet permission
 - Flash Storage Wear & Health: direct Linux kernel sysfs inspection for eMMC/UFS health and lifetime estimates, paired with real sequential write/read speed benchmarks
 - Ghost Files Hunter: finds stale APKs, archives, and documents in Downloads that were downloaded over a month ago and never opened
 - 7-day battery charging history with daily counts, logged via hardware broadcast events without any persistent background service

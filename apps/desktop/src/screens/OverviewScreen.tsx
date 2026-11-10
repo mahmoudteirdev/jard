@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTreeVersion } from "../clean-session";
 import { diskWarned } from "../disk-state";
-import { engine, type Candidate, type Disk, type Drive, type QuarantineItem, type ScanPoint, type StartupItem } from "../engine";
+import { engine, type Candidate, type DepletionForecast, type Disk, type Drive, type QuarantineItem, type ScanPoint, type StartupItem } from "../engine";
 import { daysUntilFull, groupTotals } from "../file-kinds";
 import { ago, num, size, ltr } from "../format";
 import { href, type RouteId } from "../routes";
@@ -27,11 +27,13 @@ export function OverviewScreen({ session, drives }: { session: Session | null; d
   const [topGroup, setTopGroup] = useState<{ name: string; onDisk: number } | null>(null);
   const [disks, setDisks] = useState<Disk[]>([]);
   const [startup, setStartup] = useState<StartupItem[]>([]);
+  const [forecast, setForecast] = useState<DepletionForecast | null>(null);
 
   useEffect(() => {
     let live = true;
     engine.diskHealth().then((l) => live && setDisks(l), () => {});
     engine.startupPrograms().then((l) => live && setStartup(l), () => {});
+    engine.predictStorageDepletion().then((f) => live && setForecast(f), () => {});
     return () => {
       live = false;
     };
@@ -110,12 +112,34 @@ export function OverviewScreen({ session, drives }: { session: Session | null; d
   if (oldTotal >= 100_000_000) {
     actions.push({ title: "ملفات كبيرة لم تتغير منذ سنة", why: `${num(old.length)} ملف بمجموع ${size(oldTotal, unit)}. راجعها قبل أي قرار.`, cta: "مراجعة", to: "cleanup" });
   }
+  if (forecast?.status === "critical_burn" && forecast.estimatedDaysRemaining) {
+    actions.unshift({
+      title: `⚠️ استهلاك حرج: المساحة ستنفد خلال ${forecast.estimatedDaysRemaining} يوماً`,
+      why: forecast.recommendationAr,
+      cta: "خطة الطوارئ",
+      to: "cleanup",
+    });
+  }
 
   const cards: { label: string; value: string; note: string; to: RouteId }[] = [
     {
-      label: "توقع المساحة",
-      value: days === null ? "لا يكفي للتوقع بعد" : `يمتلئ خلال ${Math.max(1, Math.round(days / 30))} شهر تقريباً`,
-      note: days === null ? "يلزم فحصان بينهما أسبوع على الأقل" : `حسب النمو بين ${num(points.length)} فحوص، إذا استمر نفس المعدل`,
+      label: "تنبؤ الذكاء الاصطناعي ⚡",
+      value:
+        forecast && forecast.estimatedDaysRemaining !== null
+          ? `يمتلئ خلال ${forecast.estimatedDaysRemaining} يوماً`
+          : forecast?.status === "freeing_space"
+            ? "المساحة الحرة تتزايد"
+            : days === null
+              ? "مستقر وآمن"
+              : `يمتلئ خلال ${Math.max(1, Math.round(days / 30))} شهر تقريباً`,
+      note:
+        forecast && forecast.estimatedDaysRemaining !== null
+          ? `الاستهلاك: +${forecast.burnVelocityMbPerDay.toFixed(1)} MB/يوم (حتى ${forecast.exhaustionDateIso})`
+          : forecast?.status === "freeing_space"
+            ? `تحرير بمعدل +${Math.abs(forecast.burnVelocityMbPerDay).toFixed(1)} MB/يوم`
+            : days === null
+              ? "استهلاك المساحة مستقر ومنتظم"
+              : `حسب النمو بين ${num(points.length)} فحوص`,
       to: "compare",
     },
     { label: "الحجر المؤقت", value: quarantine.length ? size(quarantineTotal, unit) : "فارغ", note: quarantine.length ? `${num(quarantine.length)} عنصر قابل للاسترجاع` : "اللي تنقله يبقى 30 يوماً", to: "history" },

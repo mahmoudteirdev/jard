@@ -4,6 +4,7 @@
 //! File operations take node ids, not paths, so the UI can only act on what a scan found.
 
 mod about;
+mod ai;
 mod elevate;
 mod integration;
 mod paths;
@@ -449,7 +450,10 @@ pub fn run() {
             tools::get_schedule,
             tools::remove_schedule,
             tools::network_neighbors,
-            tools::disk_partitions
+            tools::disk_partitions,
+            ai::parse_natural_query,
+            ai::search_natural_query,
+            ai::predict_storage_depletion
         ])
         .run(tauri::generate_context!())
         .expect("error while running Jard");

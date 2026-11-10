@@ -259,6 +259,8 @@ private fun ScreenContent(s: AppState, resumed: Int, isTablet: Boolean) {
         Page.Test -> ManualTestScreen(s)
         Page.StorageHealth -> StorageHealthScreen(s)
         Page.GhostFiles -> GhostFilesScreen(s)
+        Page.AiQuery -> AiQueryScreen(s)
+        Page.PredictiveStorage -> PredictiveStorageScreen(s)
         Page.None -> when (s.tab) {
             Tab.Home -> if (s.simple) SimpleHome(s) else HomeScreen(s, resumed)
             Tab.Files -> FilesScreen(s)

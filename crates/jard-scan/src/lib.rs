@@ -19,11 +19,13 @@
 //! }
 //! ```
 
+pub mod ai_query;
 pub mod dev;
 pub mod drives;
 pub mod ghost;
 #[cfg(windows)]
 pub mod mft;
+pub mod predict;
 mod duplicates;
 mod similar;
 mod truth;
@@ -40,9 +42,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
+pub use ai_query::{parse_natural_query, ParsedAiQuery};
 pub use duplicates::{find_duplicates, DuplicateGroup};
 pub use dev::{scan_dev_projects, DevArtifact, DevProject};
 pub use ghost::{find_ghost_files, GhostFile};
+pub use predict::{predict_depletion, DepletionForecast, DepletionStatus, StorageSnapshot};
 pub use similar::{find_similar, SimilarGroup, SimilarPhoto};
 pub use truth::TruthFacts;
 pub use kinds::{kind_totals, Kind, KindTotal, Query};
